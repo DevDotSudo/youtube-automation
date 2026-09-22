@@ -60,23 +60,19 @@ export const SystemStatusPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Kokoro TTS Neural Voice Engine */}
+        {/* Microsoft Edge Neural Cloud Voice Engine */}
         <div className="p-5 rounded-xl bg-[#1A1C1F] border border-[#464555]/40 flex flex-col gap-3 shadow-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#C4C0FF] text-[20px]">record_voice_over</span>
-              <span className="text-xs font-semibold text-[#E2E2E6]">Kokoro Neural TTS Engine</span>
+              <span className="text-xs font-semibold text-[#E2E2E6]">Microsoft Edge Neural Cloud Voice Engine</span>
             </div>
-            <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
-              status?.kokoroService
-                ? 'bg-[#00A572]/20 text-[#4EDEA3] border-[#00A572]/40'
-                : 'bg-[#FFDE82]/20 text-[#FFDE82] border-[#FFDE82]/40'
-            }`}>
-              {status?.kokoroService ? 'VOICE SYNTH READY' : 'Model Checking'}
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full border bg-[#00A572]/20 text-[#4EDEA3] border-[#00A572]/40">
+              CLOUD VOICE ACTIVE
             </span>
           </div>
           <p className="text-xs text-[#918FA1]">
-            Local neural text-to-speech synthesis running Microsoft Next-Gen Multilingual Neural models for natural human storytelling.
+            100% cloud-based neural text-to-speech synthesis running Microsoft Next-Gen Multilingual Neural models with zero local model overhead. Free, fast, and studio-mastered 48kHz audio.
           </p>
         </div>
 

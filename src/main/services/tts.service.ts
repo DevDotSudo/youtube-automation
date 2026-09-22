@@ -1,4 +1,3 @@
-import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
@@ -123,73 +122,6 @@ export class TTSService {
         fs.rmSync(tempDir, { recursive: true, force: true });
       } catch {}
     }
-  }
-
-  /**
-   * Generates raw TTS audio using Kokoro TTS sidecar.
-   * Automatically selects lifelike human voices (af_heart / am_adam) instead of robotic voices.
-   */
-  static async generateRawTTS(
-    text: string,
-    voice: string,
-    outputRawPath: string,
-    speed: number = 1.0,
-    timeoutMs: number = 300000 // 5 minutes timeout for CPU ONNX inference
-  ): Promise<string> {
-    const naturalVoice = (!voice || voice === 'bm_george') ? 'af_heart' : voice;
-
-    const payload = JSON.stringify({
-      text: text.trim(),
-      voice: naturalVoice,
-      speed,
-      output_format: 'wav'
-    });
-
-    const options = {
-      hostname: '127.0.0.1',
-      port: 8880,
-      path: '/tts',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload)
-      },
-      timeout: timeoutMs
-    };
-
-    return new Promise((resolve, reject) => {
-      const req = http.request(options, (res) => {
-        if (res.statusCode !== 200) {
-          let errBody = '';
-          res.on('data', (c) => (errBody += c));
-          res.on('end', () => {
-            reject(new Error(`Kokoro server responded with status: ${res.statusCode} - ${errBody}`));
-          });
-          return;
-        }
-
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          if (buffer.length > 500) {
-            fs.writeFileSync(outputRawPath, buffer);
-            resolve(outputRawPath);
-          } else {
-            reject(new Error('Kokoro returned empty or invalid audio data'));
-          }
-        });
-      });
-
-      req.on('error', (err) => reject(err));
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error(`Kokoro TTS request timed out after ${timeoutMs / 1000}s`));
-      });
-
-      req.write(payload);
-      req.end();
-    });
   }
 
   /**

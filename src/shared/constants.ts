@@ -25,42 +25,9 @@ export const EDGE_NEURAL_VOICES = [
   { id: 'en-CA-LiamNeural', label: 'Liam (Canadian Male - Smooth, Friendly & Clear)', gender: 'Male', accent: 'Canadian', tone: 'Smooth & Friendly' }
 ];
 
-export const KOKORO_VOICES = [
-  // British Male
-  { id: 'bm_fable', label: 'Fable (British Male - Warm Storyteller)', gender: 'Male', accent: 'British', tone: 'Storyteller' },
-  { id: 'bm_george', label: 'George (British Male - Calm & Thoughtful)', gender: 'Male', accent: 'British', tone: 'Calm & Thoughtful' },
-  { id: 'bm_lewis', label: 'Lewis (British Male - Rich & Poetic)', gender: 'Male', accent: 'British', tone: 'Thoughtful & Deep' },
-  { id: 'bm_daniel', label: 'Daniel (British Male - Sophisticated & Smooth)', gender: 'Male', accent: 'British', tone: 'Sophisticated' },
+export const KOKORO_VOICES: typeof EDGE_NEURAL_VOICES = [];
 
-  // American Female
-  { id: 'af_heart', label: 'Heart (American Female - Kokoro Flagship Warm & Natural)', gender: 'Female', accent: 'American', tone: 'Warm & Natural' },
-  { id: 'af_nicole', label: 'Nicole (American Female - Atmospheric & Introspective)', gender: 'Female', accent: 'American', tone: 'Introspective' },
-  { id: 'af_bella', label: 'Bella (American Female - Bright & Gentle)', gender: 'Female', accent: 'American', tone: 'Bright & Friendly' },
-  { id: 'af_sarah', label: 'Sarah (American Female - Balanced & Evocative)', gender: 'Female', accent: 'American', tone: 'Professional' },
-  { id: 'af_sky', label: 'Sky (American Female - Breathy & Intimate)', gender: 'Female', accent: 'American', tone: 'Intimate' },
-  { id: 'af_river', label: 'River (American Female - Calm & Relaxing)', gender: 'Female', accent: 'American', tone: 'Calm' },
-
-  // American Male
-  { id: 'am_michael', label: 'Michael (American Male - Deep Narrative Explainer)', gender: 'Male', accent: 'American', tone: 'Deep Narrative' },
-  { id: 'am_adam', label: 'Adam (American Male - Clear & Resonant)', gender: 'Male', accent: 'American', tone: 'Authoritative' },
-  { id: 'am_onyx', label: 'Onyx (American Male - Deep Warm Resonance)', gender: 'Male', accent: 'American', tone: 'Deep Resonance' },
-  { id: 'am_echo', label: 'Echo (American Male - Dynamic & Focused)', gender: 'Male', accent: 'American', tone: 'Dynamic' },
-  { id: 'am_eric', label: 'Eric (American Male - Conversational Explainer)', gender: 'Male', accent: 'American', tone: 'Conversational' },
-  { id: 'am_liam', label: 'Liam (American Male - Engaging & Relatable)', gender: 'Male', accent: 'American', tone: 'Engaging' },
-  { id: 'am_fenrir', label: 'Fenrir (American Male - Dramatic & Intense)', gender: 'Male', accent: 'American', tone: 'Dramatic' },
-  { id: 'am_puck', label: 'Puck (American Male - Upbeat & Curious)', gender: 'Male', accent: 'American', tone: 'Upbeat' },
-
-  // British Female
-  { id: 'bf_emma', label: 'Emma (British Female - Crisp Analytical)', gender: 'Female', accent: 'British', tone: 'Crisp Analytical' },
-  { id: 'bf_isabella', label: 'Isabella (British Female - Soft & Articulate)', gender: 'Female', accent: 'British', tone: 'Soft & Articulate' },
-  { id: 'bf_alice', label: 'Alice (British Female - Classic & Engaging)', gender: 'Female', accent: 'British', tone: 'Classic' },
-  { id: 'bf_lily', label: 'Lily (British Female - Gentle & Expressive)', gender: 'Female', accent: 'British', tone: 'Gentle' }
-];
-
-export const AVAILABLE_VOICES = [
-  ...EDGE_NEURAL_VOICES,
-  ...KOKORO_VOICES
-];
+export const AVAILABLE_VOICES = EDGE_NEURAL_VOICES;
 
 export const ONLINE_BGM_TRACKS = [
   // 1. Ghibli & Peaceful Acoustic

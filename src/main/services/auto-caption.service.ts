@@ -1,5 +1,4 @@
-﻿import http from 'http';
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
 import util from 'util';
@@ -52,64 +51,8 @@ export class AutoCaptionService {
       text: s.scriptText
     }));
 
-    // 1. Try Kokoro HTTP sidecar (/autocaption)
-    try {
-      return await this.callHttpAutoCaption(audioPath, payloadScenes);
-    } catch (httpErr: any) {
-      console.warn(`[AutoCaptionService] HTTP /autocaption failed (${httpErr.message}), trying CLI fallback...`);
-      return await this.callCliAutoCaption(audioPath, payloadScenes, projectRoot);
-    }
-  }
-
-  private static async callHttpAutoCaption(
-    audioPath: string,
-    payloadScenes: any[]
-  ): Promise<AutoCaptionResult> {
-    const payload = JSON.stringify({
-      audio_path: audioPath,
-      scenes: payloadScenes,
-      model_size: 'tiny.en'
-    });
-
-    const options = {
-      hostname: '127.0.0.1',
-      port: 8880,
-      path: '/autocaption',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload)
-      },
-      timeout: 120000 // 2 minutes timeout
-    };
-
-    return new Promise((resolve, reject) => {
-      const req = http.request(options, (res) => {
-        let body = '';
-        res.on('data', (c) => (body += c));
-        res.on('end', () => {
-          if (res.statusCode !== 200) {
-            reject(new Error(`Server returned ${res.statusCode}: ${body}`));
-            return;
-          }
-          try {
-            const parsed = JSON.parse(body);
-            resolve(this.normalizeResult(parsed));
-          } catch (e: any) {
-            reject(new Error(`Failed to parse autocaption JSON response: ${e.message}`));
-          }
-        });
-      });
-
-      req.on('error', (err) => reject(err));
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('HTTP /autocaption request timed out'));
-      });
-
-      req.write(payload);
-      req.end();
-    });
+    // Direct call to Whisper CLI alignment
+    return await this.callCliAutoCaption(audioPath, payloadScenes, projectRoot);
   }
 
   private static async callCliAutoCaption(
@@ -118,7 +61,7 @@ export class AutoCaptionService {
     projectRoot?: string
   ): Promise<AutoCaptionResult> {
     const root = projectRoot || process.cwd();
-    const scriptPath = path.join(root, 'services', 'kokoro', 'transcribe.py');
+    const scriptPath = path.join(root, 'services', 'transcription', 'transcribe.py');
     const tempJson = path.join(path.dirname(audioPath), `scenes_align_${Date.now()}.json`);
 
     try {

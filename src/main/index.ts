@@ -157,7 +157,7 @@ app.whenReady().then(() => {
   // Initialize SQLite database
   initDatabase();
 
-  // Start local AI sidecars (Kokoro TTS on port 8880)
+  // Initialize cloud voice engine & AI services
   ServiceManager.startServices(app.getAppPath()).catch((err) => {
     console.error('[Main] Error launching AI sidecar services:', err);
   });

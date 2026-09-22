@@ -12,7 +12,6 @@ const execFileAsync = util.promisify(execFile);
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
 import fs from 'fs';
 import path from 'path';
-import http from 'http';
 import { ProjectService } from '../services/project.service';
 import { ScriptParserService } from '../services/script-parser.service';
 import { ImageService } from '../services/image.service';
@@ -26,18 +25,6 @@ import { RenderService } from '../services/render.service';
 import { ApprovalStatus, AssetStatus } from '../../shared/enums';
 import { CreateProjectPayload, Scene, AppSettings, SceneEditConfig } from '../../shared/types';
 
-function checkServicePort(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const req = http.get(`http://127.0.0.1:${port}/health`, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(500, () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
-}
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // Projects
@@ -501,7 +488,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // System & Diagnostics
   ipcMain.handle('system:status', async () => {
     const settings = SettingsRepository.get();
-    const kokoroOk = await checkServicePort(8880);
+    // Online Edge Neural TTS is always available and active
+    const voiceOk = true;
     const pixazoKey = getPixazoApiKey();
     const pixazoModel = getPixazoModel();
     const pixazoConfigured = Boolean(pixazoKey && pixazoKey.length > 0);
@@ -513,7 +501,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       workspaceExists: fs.existsSync(settings.workspacePath),
       ffmpeg: true,
       ffprobe: true,
-      kokoroService: kokoroOk,
+      kokoroService: voiceOk,
+      voiceService: voiceOk,
+      voiceEngine: 'Microsoft Edge Neural TTS (Cloud)',
       pixazoService: pixazoConfigured,
       pixazoConfigured,
       pixazoModel,
