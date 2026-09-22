@@ -1,0 +1,67 @@
+export enum ProjectStatus {
+  DRAFT = 'DRAFT',
+  GENERATING = 'GENERATING',
+  REVIEW = 'REVIEW',
+  READY = 'READY',
+  RENDERING = 'RENDERING',
+  COMPLETE = 'COMPLETE',
+  ERROR = 'ERROR'
+}
+
+export enum AssetStatus {
+  PENDING = 'PENDING',
+  GENERATING = 'GENERATING',
+  READY = 'READY',
+  FAILED = 'FAILED'
+}
+
+export enum ApprovalStatus {
+  UNREVIEWED = 'UNREVIEWED',
+  APPROVED = 'APPROVED',
+  NEEDS_REVIEW = 'NEEDS_REVIEW'
+}
+
+export enum MotionType {
+  STATIC = 'STATIC',
+  ZOOM_IN = 'ZOOM_IN',
+  ZOOM_OUT = 'ZOOM_OUT',
+  PAN_LEFT = 'PAN_LEFT',
+  PAN_RIGHT = 'PAN_RIGHT',
+  PUSH_IN = 'PUSH_IN',
+  PUNCH_IN = 'PUNCH_IN',
+  // Backward compatibility mappings
+  AUTO = 'STATIC',
+  AUTO_HARD_EDIT = 'PUNCH_IN',
+  FAST_CUT = 'STATIC',
+  SLIGHT_PUSH = 'PUSH_IN',
+  HOLD = 'STATIC',
+  NONE = 'STATIC'
+}
+
+export enum TransitionType {
+  CUT = 'CUT',
+  DISSOLVE = 'DISSOLVE',
+  FADE = 'FADE',
+  FADE_WHITE = 'FADE_WHITE',
+  WIPE_LEFT = 'WIPE_LEFT',
+  WIPE_RIGHT = 'WIPE_RIGHT',
+  CIRCLE_CROP = 'CIRCLE_CROP',
+  SMOOTH_LEFT = 'SMOOTH_LEFT',
+  SMOOTH_RIGHT = 'SMOOTH_RIGHT',
+  // Backward compatibility mappings
+  CROSS_DISSOLVE = 'DISSOLVE',
+  DIP_TO_BLACK = 'FADE',
+  NONE = 'CUT'
+}
+
+export enum VisualShotType {
+  WIDE_SCENE = 'WIDE_SCENE',
+  MEDIUM_SCENE = 'MEDIUM_SCENE',
+  CLOSE_UP = 'CLOSE_UP',
+  PROP_CLOSEUP = 'PROP_CLOSEUP',
+  REACTION_SHOT = 'REACTION_SHOT',
+  CONCEPT_SHOT = 'CONCEPT_SHOT',
+  DIAGRAM = 'DIAGRAM',
+  ENVIRONMENT_SHOT = 'ENVIRONMENT_SHOT',
+  KEYWORD_SCENE = 'KEYWORD_SCENE'
+}
