@@ -622,6 +622,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
       emitProgress('Video generation completed successfully!', 100);
 
+      // Clean up intermediate render segment files to reclaim disk storage
+      try {
+        if (fs.existsSync(tempSegmentsDir)) {
+          fs.rmSync(tempSegmentsDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(tempVideoOnlyPath)) {
+          fs.unlinkSync(tempVideoOnlyPath);
+        }
+      } catch (cleanErr) {
+        console.warn('[RenderService] Notice: could not clean intermediate temp render files:', cleanErr);
+      }
+
       ProjectRepository.update(projectId, { status: ProjectStatus.COMPLETE });
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('render:complete', { projectId, outputPath: masterOutputPath });

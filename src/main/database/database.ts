@@ -152,6 +152,9 @@ export function initDatabase(): Database.Database {
   try { db.exec("ALTER TABLE scenes ADD COLUMN video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE projects ADD COLUMN default_video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE projects ADD COLUMN visual_niche TEXT DEFAULT 'stoic_philosophy'"); } catch {}
+  try { db.exec("CREATE INDEX IF NOT EXISTS idx_scenes_project_id ON scenes(project_id)"); } catch {}
+  try { db.exec("CREATE INDEX IF NOT EXISTS idx_visual_beats_project_id ON visual_beats(project_id)"); } catch {}
+  try { db.exec("CREATE INDEX IF NOT EXISTS idx_visual_beats_scene_id ON visual_beats(scene_id)"); } catch {}
 
 
 

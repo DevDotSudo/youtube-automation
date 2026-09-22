@@ -272,6 +272,17 @@ export class GenerationQueue {
       const masterVoicePath = path.join(project.projectPath, 'audio', 'master_voice.wav');
       const voiceModel = project.voiceId || 'af_heart';
 
+      // Check if continuous audio and alignment already exist from a previous run (Resumption support)
+      const isMasterVoiceReady = fs.existsSync(masterVoicePath) && fs.statSync(masterVoicePath).size > 1000;
+      const areScenesAligned = scenes.every((s) => s.audioStatus === AssetStatus.READY && (s.endMs > s.startMs));
+
+      if (isMasterVoiceReady && areScenesAligned) {
+        console.log(`[GenerationQueue] Verified existing audio track & scene alignments. Resuming image generation.`);
+        audioDoneCount = scenes.length;
+        emitProgress(audioDoneCount, beatDoneCount, scenes[0], undefined, 'Audio verified. Resuming image synthesis...');
+        return;
+      }
+
       // Mark all scenes as generating audio
       for (const scene of scenes) {
         SceneRepository.update(scene.id, { audioStatus: AssetStatus.GENERATING });
@@ -403,6 +414,7 @@ export class GenerationQueue {
             errorMessage: err.message
           });
         }
+        throw new Error(`Narration audio synthesis failed: ${err.message || err}`);
       }
     };
 
@@ -473,13 +485,23 @@ export class GenerationQueue {
           console.warn('[GenerationQueue] ASS subtitle generation notice:', assErr);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[GenerationQueue] Execution error:', err);
+      ProjectRepository.update(projectId, { status: ProjectStatus.ERROR });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('generation:error', {
+          projectId,
+          error: err?.message || String(err)
+        });
+      }
     } finally {
       this.activeProjectId = null;
-      ProjectRepository.update(projectId, { status: ProjectStatus.READY });
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('generation:complete', { projectId, autoEditApplied: true });
+      const currentProj = ProjectRepository.getById(projectId);
+      if (currentProj && currentProj.status !== ProjectStatus.ERROR && !this.isCancelled) {
+        ProjectRepository.update(projectId, { status: ProjectStatus.READY });
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('generation:complete', { projectId, autoEditApplied: true });
+        }
       }
     }
   }

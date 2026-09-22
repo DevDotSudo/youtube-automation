@@ -34,7 +34,7 @@ function createWindow(): BrowserWindow {
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
-    title: 'GhibliForge - Studio Ghibli Storyteller',
+    title: 'DocuForge - Automated Video Studio',
     backgroundColor: '#0B0D10',
     autoHideMenuBar: true,
     webPreferences: {

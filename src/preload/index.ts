@@ -67,6 +67,13 @@ const api = {
       return () => {
         ipcRenderer.removeListener('generation:complete', handler);
       };
+    },
+    onError: (callback: (data: any) => void) => {
+      const handler = (_event: any, data: any) => callback(data);
+      ipcRenderer.on('generation:error', handler);
+      return () => {
+        ipcRenderer.removeListener('generation:error', handler);
+      };
     }
   },
 

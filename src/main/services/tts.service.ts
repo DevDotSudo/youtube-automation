@@ -74,59 +74,71 @@ export class TTSService {
     text: string,
     voice: string,
     outputWavPath: string,
-    speed: number = 1.0
+    speed: number = 1.0,
+    maxRetries: number = 3
   ): Promise<string> {
-    const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
-    const tts = new MsEdgeTTS();
     const cleanVoice = this.resolveVoice(voice);
-    await tts.setMetadata(cleanVoice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+    let lastErr: any = null;
 
-    const tempDir = path.join(path.dirname(outputWavPath), `edge_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`);
-    fs.mkdirSync(tempDir, { recursive: true });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const tempDir = path.join(
+        path.dirname(outputWavPath),
+        `edge_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+      );
+      fs.mkdirSync(tempDir, { recursive: true });
 
-    try {
-      // Natural human storytelling cadence:
-      // Default rate is -4% for deliberate narrative pacing. If user set custom speed, scale accordingly.
-      const ratePercent = speed !== 1.0 ? Math.round((speed - 1.0) * 100) : -4;
-      const rateString = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
-
-      const result = await tts.toFile(tempDir, text.trim(), {
-        rate: rateString,
-        pitch: '+0Hz',
-        volume: '+0%'
-      });
-
-      const mp3Path = result.audioFilePath;
-      if (!fs.existsSync(mp3Path) || fs.statSync(mp3Path).size < 100) {
-        throw new Error('Edge TTS returned empty or invalid audio data');
-      }
-
-      // Studio mastering chain: warmth EQ, de-harshness filter, broadcast presence limiter
-      const studioFilter =
-        'equalizer=f=220:width_type=o:width=1.2:g=1.5,' +
-        'equalizer=f=6000:width_type=o:width=1.5:g=-1.0,' +
-        'compand=attacks=0.02:decays=0.2:points=-80/-80|-24/-20|0/-3:gain=1.5,' +
-        'aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo';
-
-      await execFileAsync('ffmpeg', [
-        '-y',
-        '-i', mp3Path,
-        '-af', studioFilter,
-        '-c:a', 'pcm_s16le',
-        outputWavPath
-      ]);
-
-      return outputWavPath;
-    } finally {
       try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } catch {}
+        const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
+        const tts = new MsEdgeTTS();
+        await tts.setMetadata(cleanVoice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+
+        const ratePercent = speed !== 1.0 ? Math.round((speed - 1.0) * 100) : -4;
+        const rateString = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
+
+        const result = await tts.toFile(tempDir, text.trim(), {
+          rate: rateString,
+          pitch: '+0Hz',
+          volume: '+0%'
+        });
+
+        const mp3Path = result.audioFilePath;
+        if (!fs.existsSync(mp3Path) || fs.statSync(mp3Path).size < 100) {
+          throw new Error('Edge TTS returned empty or invalid audio data');
+        }
+
+        // Studio mastering chain: warmth EQ, de-harshness filter, broadcast presence limiter
+        const studioFilter =
+          'equalizer=f=220:width_type=o:width=1.2:g=1.5,' +
+          'equalizer=f=6000:width_type=o:width=1.5:g=-1.0,' +
+          'compand=attacks=0.02:decays=0.2:points=-80/-80|-24/-20|0/-3:gain=1.5,' +
+          'aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo';
+
+        await execFileAsync('ffmpeg', [
+          '-y',
+          '-i', mp3Path,
+          '-af', studioFilter,
+          '-c:a', 'pcm_s16le',
+          outputWavPath
+        ]);
+
+        return outputWavPath;
+      } catch (err: any) {
+        lastErr = err;
+        console.warn(`[TTSService] Edge TTS attempt ${attempt}/${maxRetries} failed: ${err.message || err}`);
+        if (attempt < maxRetries) {
+          const delayMs = attempt * 1500;
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      } finally {
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch {}
+      }
     }
+
+    throw lastErr || new Error('Edge TTS synthesis failed after maximum retries');
   }
 
-  /**
-   * Generates natural human narration for a scene with a natural breath pause (~300ms).
-   */
   static async generateSceneNarration(
     text: string,
     voice: string,

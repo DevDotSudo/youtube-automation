@@ -19,6 +19,7 @@ export const GenerationPage: React.FC = () => {
   const [beatsDoneCount, setBeatsDoneCount] = useState<number>(0);
   const [scenesDoneCount, setScenesDoneCount] = useState<number>(0);
   const [isAutoEditing, setIsAutoEditing] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [logMessages, setLogMessages] = useState<{ time: string; text: string }[]>([]);
 
   useEffect(() => {
@@ -62,12 +63,20 @@ export const GenerationPage: React.FC = () => {
       setIsGenerating(false);
       setIsPaused(false);
       setIsAutoEditing(true);
+      setErrorMessage(null);
       addLog('All assets generated! Assembling master production timeline...');
       if (id) fetchProject(id);
       setTimeout(() => {
         navigate(`/project/${id}/render`);
       }, 1600);
     });
+
+    const unsubError = window.docuforge.generation.onError ? window.docuforge.generation.onError((data) => {
+      setIsGenerating(false);
+      setIsPaused(false);
+      setErrorMessage(data.error || 'Generation pipeline encountered an error.');
+      addLog(`⚠️ Generation halted: ${data.error || 'Unknown error'}`);
+    }) : () => {};
 
     const unsubScene = window.docuforge.scenes.onSceneUpdated((scene) => {
       updateSceneInList(scene);
@@ -80,6 +89,7 @@ export const GenerationPage: React.FC = () => {
     return () => {
       unsubProgress();
       unsubComplete();
+      if (unsubError) unsubError();
       unsubScene();
       unsubBeat();
     };
@@ -99,8 +109,18 @@ export const GenerationPage: React.FC = () => {
 
   const handleStart = async () => {
     if (!id || !window.docuforge) return;
+    setErrorMessage(null);
     setIsGenerating(true);
     addLog('Pipeline started by user');
+    await window.docuforge.generation.start(id);
+  };
+
+  const handleRetry = async () => {
+    if (!id || !window.docuforge) return;
+    setErrorMessage(null);
+    setIsGenerating(true);
+    setIsPaused(false);
+    addLog('Resuming generation pipeline from checkpoint...');
     await window.docuforge.generation.start(id);
   };
 
@@ -140,6 +160,34 @@ export const GenerationPage: React.FC = () => {
             <p className="text-xs text-[#918FA1] font-mono">
               Clips, camera motions, color filters, and synchronized audio tracks have been assembled. Opening Studio Editor...
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Alert Card */}
+      {errorMessage && (
+        <div className="p-4 mb-4 rounded-xl bg-[#2A0E12] border border-[#FF5449]/40 flex flex-col gap-3 shadow-lg">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[#FF5449] text-[24px]">error</span>
+            <div className="flex-1">
+              <h4 className="text-sm font-bold text-white">Generation Paused Due to Error</h4>
+              <p className="text-xs text-[#FFB4AB] font-mono mt-1 break-all">{errorMessage}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 self-end">
+            <button
+              onClick={() => navigate('/projects')}
+              className="px-3 py-1.5 rounded-lg bg-[#1A1C1F] hover:bg-[#282A2D] text-[#C7C4D8] text-xs font-mono border border-[#464555]/30 cursor-pointer"
+            >
+              Back to Projects
+            </button>
+            <button
+              onClick={handleRetry}
+              className="px-4 py-1.5 rounded-lg bg-[#4EDEA3] hover:bg-[#4EDEA3]/90 text-[#0C0E11] text-xs font-bold font-mono flex items-center gap-1.5 cursor-pointer shadow-lg shadow-[#4EDEA3]/20"
+            >
+              <span className="material-symbols-outlined text-[16px]">replay</span>
+              Resume Pipeline
+            </button>
           </div>
         </div>
       )}

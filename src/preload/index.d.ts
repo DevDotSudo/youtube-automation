@@ -58,6 +58,7 @@ export interface DocuforgeApi {
       percent?: number;
     }) => void) => () => void;
     onComplete: (callback: (data: { projectId: string }) => void) => () => void;
+    onError: (callback: (data: { projectId: string; error: string }) => void) => () => void;
   };
 
   render: {
