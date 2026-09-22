@@ -298,8 +298,7 @@ export class GenerationQueue {
         console.log(`[GenerationQueue] Running auto-caption alignment on ${masterVoicePath}...`);
         const alignResult = await AutoCaptionService.alignScenesToAudio(
           masterVoicePath,
-          scenes,
-          project.projectPath
+          scenes
         );
 
         console.log(`[GenerationQueue] Auto-caption aligned ${alignResult.scenes.length} scenes (total duration: ${alignResult.totalDurationMs}ms)`);
@@ -341,7 +340,7 @@ export class GenerationQueue {
             scriptText: scene.scriptText,
             durationMs: finalDurationMs,
             startMs
-          });
+          }, undefined, project.visualNiche);
 
           if (currentBeats.length === planned.length && currentBeats.length > 0) {
             // Update timings in-place to keep IDs completely stable

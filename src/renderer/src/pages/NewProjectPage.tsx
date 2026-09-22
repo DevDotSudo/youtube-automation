@@ -1,7 +1,7 @@
 ﻿import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../stores/project.store';
-import { EDGE_NEURAL_VOICES } from '../../../shared/constants';
+import { EDGE_NEURAL_VOICES, VISUAL_NICHES } from '../../../shared/constants';
 
 
 export const NewProjectPage: React.FC = () => {
@@ -9,6 +9,7 @@ export const NewProjectPage: React.FC = () => {
   const { createProject, isLoading } = useProjectStore();
 
   const [title, setTitle] = useState('');
+  const [selectedNiche, setSelectedNiche] = useState<string>('stoic_philosophy');
   const [scriptText, setScriptText] = useState('');
   const [voiceId, setVoiceId] = useState('en-US-AndrewMultilingualNeural');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
@@ -34,6 +35,10 @@ export const NewProjectPage: React.FC = () => {
 
     return { words, chars, estSec, estScenes, estBeats };
   }, [scriptText, voiceSpeed, beatCadence]);
+
+  const currentNiche = useMemo(() => {
+    return VISUAL_NICHES.find((n) => n.id === selectedNiche) || VISUAL_NICHES[0];
+  }, [selectedNiche]);
 
   const formatEstTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -70,12 +75,13 @@ export const NewProjectPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const projectTitle = title.trim() || 'Ghibli Story ' + new Date().toLocaleDateString();
+      const projectTitle = title.trim() || `${currentNiche.name} Story ${new Date().toLocaleDateString()}`;
 
       const newProject = await createProject({
         name: projectTitle,
         scriptContent: cleanScript,
-        voiceId
+        voiceId,
+        visualNiche: selectedNiche
       });
 
       if (window.docuforge?.generation?.start) {
@@ -107,15 +113,20 @@ export const NewProjectPage: React.FC = () => {
             <span className="text-[10px] font-mono tracking-widest text-[#8781FF] uppercase bg-[#8781FF]/10 px-2.5 py-0.5 rounded-full border border-[#8781FF]/25 font-bold">
               Fast Story Production
             </span>
-            <span className="text-[#918FA1] text-[11px] font-mono">
-              16:9 Landscape · Studio Ghibli Aesthetic
+            <span className="text-[#918FA1] text-[11px] font-mono flex items-center gap-1.5">
+              <span>16:9 Landscape</span>
+              <span>·</span>
+              <span className="text-white font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentNiche.color }}></span>
+                {currentNiche.name}
+              </span>
             </span>
           </div>
           <h1 className="text-2xl font-bold text-[#F0F0F3] tracking-tight font-display flex items-center gap-2.5">
             <span>Create New Story Production</span>
           </h1>
           <p className="text-xs text-[#C7C4D8]">
-            Input your narrative script. The dual-engine AI pipeline automatically decomposes scenes, generates watercolor art beats, and synthesizes master narration.
+            Input your narrative script and choose your visual niche. The pipeline automatically decomposes scenes, crafts high-fidelity art beats in your chosen style, and synthesizes master narration.
           </p>
         </div>
 
@@ -142,6 +153,98 @@ export const NewProjectPage: React.FC = () => {
           <span>{errorMessage}</span>
         </div>
       )}
+      {/* Visual Niche & Aesthetic Selector */}
+      <div className="flex flex-col gap-3 p-5 rounded-2xl bg-[#121419] border border-white/[0.06] shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+              style={{ backgroundColor: `${currentNiche.color}20`, color: currentNiche.color }}
+            >
+              <span className="material-symbols-outlined text-[20px]">{currentNiche.icon}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#F0F0F3] font-mono flex items-center gap-2">
+                <span>Select Visual Niche & Art Style</span>
+                {currentNiche.badge && (
+                  <span
+                    className="text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-tight"
+                    style={{
+                      backgroundColor: `${currentNiche.color}15`,
+                      color: currentNiche.color,
+                      border: `1px solid ${currentNiche.color}35`
+                    }}
+                  >
+                    {currentNiche.badge}
+                  </span>
+                )}
+              </span>
+              <span className="text-[11px] text-[#918FA1]">
+                Active: <strong className="text-[#F0F0F3]">{currentNiche.name}</strong> — {currentNiche.description}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Niche Grid Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+          {VISUAL_NICHES.map((niche) => {
+            const isSelected = niche.id === selectedNiche;
+            return (
+              <button
+                key={niche.id}
+                type="button"
+                onClick={() => setSelectedNiche(niche.id)}
+                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer relative overflow-hidden group ${
+                  isSelected
+                    ? 'bg-gradient-to-b from-white/[0.08] to-transparent border-[#8781FF] shadow-md shadow-[#8781FF]/10 ring-1 ring-[#8781FF]'
+                    : 'bg-[#0C0E11] hover:bg-[#181B22] border-white/[0.06] hover:border-white/[0.15]'
+                }`}
+              >
+                {/* Top Row: Icon + Badge */}
+                <div className="flex items-center justify-between">
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
+                    style={{ backgroundColor: `${niche.color}20`, color: niche.color }}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">{niche.icon}</span>
+                  </div>
+                  {niche.badge && (
+                    <span
+                      className="text-[8px] font-mono px-1 py-0.2 rounded font-bold uppercase tracking-tighter"
+                      style={{
+                        backgroundColor: `${niche.color}15`,
+                        color: niche.color
+                      }}
+                    >
+                      {niche.badge.split(' ')[0]}
+                    </span>
+                  )}
+                </div>
+
+                {/* Name */}
+                <span className={`text-[11px] font-semibold truncate ${isSelected ? 'text-white font-bold' : 'text-[#C7C4D8] group-hover:text-white'}`}>
+                  {niche.name}
+                </span>
+
+                {/* Category */}
+                <span className="text-[9px] font-mono text-[#7D7A8B] uppercase tracking-wider truncate">
+                  {niche.category}
+                </span>
+
+                {/* Active Indicator Strip */}
+                {isSelected && (
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[2px]"
+                    style={{ backgroundColor: niche.color }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Main Grid Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Specifications & Audio Settings */}

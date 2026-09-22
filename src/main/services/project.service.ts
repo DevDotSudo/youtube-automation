@@ -74,6 +74,7 @@ export class ProjectService {
     // Parse script into scenes
     const parseResult = ScriptParserService.parseScript(payload.scriptContent);
 
+    const visualNiche = payload.visualNiche || 'stoic_philosophy';
     const project: Project = {
       id: projectId,
       name: rawName,
@@ -83,6 +84,7 @@ export class ProjectService {
       durationMs: parseResult.totalDurationMs,
       sceneCount: parseResult.scenes.length,
       voiceId: payload.voiceId || settings.defaultVoiceId,
+      visualNiche,
       createdAt: now,
       updatedAt: now
     };
@@ -101,7 +103,7 @@ export class ProjectService {
       fs.mkdirSync(sceneDirPath, { recursive: true });
 
       const overlayText = PromptService.generateOverlayText(ps.text);
-      const prompt = PromptService.buildPrompt(ps.text, overlayText);
+      const prompt = PromptService.buildPrompt(ps.text, overlayText, undefined, undefined, visualNiche);
 
       return {
         id: sceneId,
@@ -140,7 +142,8 @@ export class ProjectService {
           durationMs: sc.durationMs,
           startMs: sc.startMs
         },
-        lastShot
+        lastShot,
+        visualNiche
       );
 
       const folderNum = String(sc.sceneIndex).padStart(4, '0');

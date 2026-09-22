@@ -1,4 +1,129 @@
-import { CaptionPresetName, CaptionStyleConfig } from './types';
+import { CaptionPresetName, CaptionStyleConfig, VisualNicheOption } from './types';
+
+export const VISUAL_NICHES: VisualNicheOption[] = [
+  {
+    id: 'stoic_philosophy',
+    name: 'Stoicism & Ancient Philosophy',
+    category: 'Wisdom & High RPM',
+    description: 'Caravaggio chiaroscuro oil painting, weathered marble busts, ancient Roman & Greek candlelit halls.',
+    icon: 'account_balance',
+    color: '#D4AF37',
+    badge: 'HIGH RPM ($10-$18)',
+    samplePromptKeywords: ['chiaroscuro oil painting', 'weathered marble bust', 'Caravaggio shadows', 'ancient Rome']
+  },
+  {
+    id: 'stickman_doodle',
+    name: 'Stickman & Minimalist Doodle',
+    category: 'Viral Explainer',
+    description: 'Clean hand-drawn stick figure animation style, expressive doodle characters, black ink line art (MinutePhysics / Casually Explained style).',
+    icon: 'gesture',
+    color: '#38BDF8',
+    badge: 'VIRAL FORMAT',
+    samplePromptKeywords: ['minimalist stickman illustration', 'black ink line art', 'expressive doodle', 'whiteboard explainer']
+  },
+  {
+    id: 'studio_ghibli',
+    name: 'Studio Ghibli Watercolor Anime',
+    category: 'Cozy & Storytelling',
+    description: 'Authentic Hayao Miyazaki & Makoto Shinkai hand-painted gouache, lush watercolor scenery, cozy nostalgic aesthetic.',
+    icon: 'park',
+    color: '#4ADE80',
+    badge: 'TIMELESS',
+    samplePromptKeywords: ['Studio Ghibli watercolor', 'Hayao Miyazaki aesthetic', 'hand-painted gouache', '16:9 anime']
+  },
+  {
+    id: 'cosmic_scifi',
+    name: 'Cosmic Scale & Sci-Fi Lore',
+    category: 'Sci-Fi & Astronomy',
+    description: 'Monolithic retro-futurism (Syd Mead / Chris Foss), Dyson spheres, vast planetary rings, derelict starships in deep space.',
+    icon: 'rocket_launch',
+    color: '#A855F7',
+    badge: 'COLOSSAL SCALE',
+    samplePromptKeywords: ['monolithic sci-fi matte painting', 'Dyson sphere', 'deep space silence', 'retro-futurism']
+  },
+  {
+    id: 'true_crime_noir',
+    name: 'Cold War Espionage & True Crime',
+    category: 'History & Documentary',
+    description: 'Gritty 35mm analog film noir, 1970s desaturated surveillance stills, flash photography, rain-slicked asphalt.',
+    icon: 'fingerprint',
+    color: '#F43F5E',
+    samplePromptKeywords: ['vintage 35mm film photograph', '1970s film noir', 'grainy surveillance', 'desaturated realism']
+  },
+  {
+    id: 'ancient_civilizations',
+    name: 'Ancient Civilizations & Archeology',
+    category: 'History & Discovery',
+    description: 'Dramatic torchlit excavations, colossal sandstone pharaohs, underground crypts, golden hieroglyphic reliefs.',
+    icon: 'temple_hindu',
+    color: '#F59E0B',
+    samplePromptKeywords: ['ancient archaeological excavation', 'colossal stone statue', 'torchlight', 'hieroglyphics']
+  },
+  {
+    id: 'dark_academia',
+    name: 'Dark Academia & Victorian Mystery',
+    category: 'Literature & Essays',
+    description: 'Towering multi-story mahogany libraries, rain on gothic stained-glass windows, antique telescopes, leather grimoires.',
+    icon: 'local_library',
+    color: '#B45309',
+    samplePromptKeywords: ['dark academia aesthetic', 'Victorian gothic library', 'stormy rain on windows', 'antique brass']
+  },
+  {
+    id: 'epic_battles',
+    name: 'Epic Historical Battles',
+    category: 'Military Strategy',
+    description: 'Grand 19th-century academic battle paintings, smoke-filled cannon lines, charging cavalry, panoramic war canvas.',
+    icon: 'swords',
+    color: '#E11D48',
+    samplePromptKeywords: ['epic historical battle oil painting', 'cannon smoke', 'cavalry charge', 'panoramic canvas']
+  },
+  {
+    id: 'dark_folklore',
+    name: 'Dark Folklore & Mythic Legends',
+    category: 'Mythology & Fantasy',
+    description: 'Dark Scandinavian storybook concept art, ancient carved runestones, foggy pine forests, eerie pagan ritual fires.',
+    icon: 'forest',
+    color: '#059669',
+    samplePromptKeywords: ['dark fantasy concept art', 'Nordic folklore', 'carved runestones', 'misty pine forest']
+  },
+  {
+    id: 'liminal_horror',
+    name: 'Liminal Spaces & Analog Horror',
+    category: 'Horror & Mystery',
+    description: 'Eerie 1990s VHS camcorder aesthetic, humming fluorescent yellow carpet corridors, uncanny dreamcore stillness.',
+    icon: 'videocam',
+    color: '#EAB308',
+    samplePromptKeywords: ['liminal space', 'yellow carpet hallway', 'humming fluorescent lights', 'VHS tape grain']
+  },
+  {
+    id: 'surrealist_thought',
+    name: 'Surrealism & Thought Experiments',
+    category: 'Psychology & Paradoxes',
+    description: 'Rene Magritte minimalist conceptual art, solitary doorways in sand dunes, symbolic paradoxes, stark geometric shadows.',
+    icon: 'lightbulb',
+    color: '#06B6D4',
+    samplePromptKeywords: ['minimalist surrealist concept art', 'Rene Magritte aesthetic', 'isolated door in sand dunes', 'symbolic']
+  },
+  {
+    id: 'cyberpunk_noir',
+    name: 'Cyberpunk Dystopia & Techno-Noir',
+    category: 'Futurism & Tech',
+    description: 'Blade Runner 1982 aesthetic, massive corporate mega-pyramids, neon reflections on wet asphalt, dense flying spinner traffic.',
+    icon: 'location_city',
+    color: '#00E5FF',
+    samplePromptKeywords: ['Blade Runner retro-cyberpunk', 'neon reflections on wet asphalt', 'brutalist corporate mega-tower']
+  },
+  {
+    id: 'extreme_survival',
+    name: 'Extreme Survival & Expeditions',
+    category: 'Adventure & Survival',
+    description: 'Rugged National Geographic documentary stills, solitary tent in Himalayan blizzards, Arctic ice sheets under green auroras.',
+    icon: 'snowboarding',
+    color: '#64748B',
+    samplePromptKeywords: ['National Geographic documentary photograph', 'solitary tent in blizzard', 'jagged mountain peak']
+  }
+];
+
 
 export const EDGE_NEURAL_VOICES = [
   // Flagship Multilingual Neural (Highest fidelity, ultra-natural human tone)

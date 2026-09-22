@@ -151,6 +151,7 @@ export function initDatabase(): Database.Database {
   try { db.exec("ALTER TABLE visual_beats ADD COLUMN video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE scenes ADD COLUMN video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE projects ADD COLUMN default_video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN visual_niche TEXT DEFAULT 'stoic_philosophy'"); } catch {}
 
 
 

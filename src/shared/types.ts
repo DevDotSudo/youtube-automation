@@ -1,3 +1,14 @@
+export interface VisualNicheOption {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  icon: string;
+  color: string;
+  badge?: string;
+  samplePromptKeywords: string[];
+}
+
 export interface AlignedWord {
   word: string;
   startMs: number;
@@ -85,6 +96,7 @@ export interface Project {
   captionStyle?: CaptionStyleConfig;
   defaultVideoEffect?: string;
   thumbnailPath?: string;
+  visualNiche?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -209,6 +221,7 @@ export interface CreateProjectPayload {
   name: string;
   scriptContent: string;
   voiceId?: string;
+  visualNiche?: string;
 }
 
 export interface ParallelImageTask {

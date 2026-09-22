@@ -55,13 +55,26 @@ export class AutoCaptionService {
     return await this.callCliAutoCaption(audioPath, payloadScenes, projectRoot);
   }
 
+  private static getScriptPath(): string {
+    const candidateRoots = [
+      process.cwd(),
+      path.join(__dirname, '..', '..', '..'),
+      path.join(__dirname, '..', '..'),
+      'C:\\Users\\Davie\\Programming\\ElectronJS Development\\youtube-automation'
+    ];
+    for (const r of candidateRoots) {
+      const p = path.join(r, 'services', 'transcription', 'transcribe.py');
+      if (fs.existsSync(p)) return p;
+    }
+    return path.join(process.cwd(), 'services', 'transcription', 'transcribe.py');
+  }
+
   private static async callCliAutoCaption(
     audioPath: string,
     payloadScenes: any[],
-    projectRoot?: string
+    _projectRoot?: string
   ): Promise<AutoCaptionResult> {
-    const root = projectRoot || process.cwd();
-    const scriptPath = path.join(root, 'services', 'transcription', 'transcribe.py');
+    const scriptPath = this.getScriptPath();
     const tempJson = path.join(path.dirname(audioPath), `scenes_align_${Date.now()}.json`);
 
     try {

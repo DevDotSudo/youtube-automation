@@ -47,7 +47,8 @@ export class VisualBeatPlannerService {
    */
   static planSceneBeats(
     scene: ScenePlanningInput,
-    previousShotType?: VisualShotType
+    previousShotType?: VisualShotType,
+    visualNiche?: string
   ): VisualBeat[] {
     const text = (scene.scriptText || '').trim();
     const durationMs = Math.max(1000, scene.durationMs);
@@ -100,7 +101,7 @@ export class VisualBeatPlannerService {
       const transitionDurationMs = transition === 'DISSOLVE' ? 300 : 0;
 
       // Construct Studio Ghibli image prompt with exact spoken narration included!
-      const imagePrompt = this.constructImagePrompt(visualConcept, shotType, environmentDescription, text);
+      const imagePrompt = this.constructImagePrompt(visualConcept, shotType, environmentDescription, text, visualNiche);
 
       beats.push({
         id: crypto.randomUUID(),
@@ -215,58 +216,16 @@ export class VisualBeatPlannerService {
     visualConcept: string,
     shotType: VisualShotType,
     environmentDescription: string,
-    scriptContext?: string
+    scriptContext?: string,
+    visualNiche?: string
   ): string {
-    const cleanSpeech = (scriptContext || '').replace(/[\"\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
-    const inImageText = PromptService.detectContextualInImageText(cleanSpeech, visualConcept);
-
-    const inImageSection = inImageText
-      ? `IN-IMAGE TEXT SPECIFICATION:
-- Clearly display the subtle carved text "${inImageText.text}" on the ${inImageText.location}.
-- Strictly NO other random words, watermarks, gibberish letters, or background captions.`
-      : `STRICTLY NO TEXT:
-- No text, no words, no letters, no captions, no typography, no watermarks anywhere in this illustration.`;
-
-    const exclusions = inImageText
-      ? `- stickman, stick figure, crude drawing, bad anatomy
-- 3D CGI render, photorealistic skin, low polygon
-- blurry text, illegible scribbles, random gibberish letters, watermarks, signatures`
-      : `- stickman, stick figure, crude drawing, bad anatomy
-- 3D CGI render, photorealistic skin, low polygon
-- text, words, letters, captions, typography, subtitles, watermarks, signatures`;
-
-    const narrationBlock = cleanSpeech
-      ? `STORY NARRATION (ILLUSTRATE THIS EXACT SCENE):
-"${cleanSpeech}"
-
-`
-      : '';
-
-    return `Create a breathtaking Studio Ghibli hand-painted anime illustration in the aesthetic of Hayao Miyazaki and Makoto Shinkai.
-
-${narrationBlock}VISUAL SCENE DETAILS:
-"${visualConcept}"
-
-SHOT TYPE:
-"${shotType}"
-
-ENVIRONMENT & ATMOSPHERE:
-"${environmentDescription}"
-
-${inImageSection}
-
-ART DIRECTION & STYLE:
-- Authentic Studio Ghibli real-world slice-of-life anime aesthetic (Whisper of the Heart, From Up on Poppy Hill, Ocean Waves)
-- Grounded everyday realism: NO fairytale, NO fantasy, NO magic, NO surrealism
-- Realistic everyday environments, authentic human characters in casual everyday clothing
-- Traditional hand-painted gouache and watercolor textures with rich natural lighting (golden hour sunbeams, soft rainy afternoon overcast, warm incandescent lamps)
-- Masterwork grounded anime cinematography
-
-STRICT EXCLUSIONS (DO NOT INCLUDE):
-- fairytale, fantasy, magic, floating islands, flying airships, magic dust, glowing particles, wizards, witches, surrealism
-${exclusions}
-
-16:9 widescreen landscape.`;
+    return PromptService.buildPrompt(
+      scriptContext || '',
+      visualConcept,
+      shotType,
+      environmentDescription,
+      visualNiche
+    );
   }
 
   private static extractKeyword(text: string): string | undefined {
