@@ -275,7 +275,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                     {isGeneratingThumb && (
                       <div className="absolute inset-0 bg-[#000]/75 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                         <div className="w-10 h-10 border-3 border-[#4EDEA3] border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-xs font-mono text-[#E2E2E6]">Generating Studio Ghibli Artwork with Title Overlay...</p>
+                        <p className="text-xs font-mono text-[#E2E2E6]">Generating Pure AI Thumbnail Artwork (No Text Overlay)...</p>
                         <p className="text-[11px] font-mono text-[#918FA1]">Pixazo AI (1280x720 Widescreen)</p>
                       </div>
                     )}
@@ -285,7 +285,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                     <span>Resolution: 1280 × 720 (YouTube Standard 16:9)</span>
                     <span className="text-[#4EDEA3] flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#4EDEA3]"></span>
-                      AI In-Image Title Overlay Active
+                      Clean Artwork Mode (No Text Overlay)
                     </span>
                   </div>
                 </div>
@@ -301,7 +301,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                       onClick={() => handleGenerateThumbnail()}
                       disabled={isGeneratingThumb}
                       className="px-2.5 py-1 rounded-lg bg-[#282A2D] hover:bg-[#34373C] text-[#4EDEA3] text-[11px] font-mono flex items-center gap-1 border border-[#4EDEA3]/30 disabled:opacity-50 cursor-pointer transition-colors"
-                      title="Regenerate AI thumbnail with title overlay"
+                      title="Regenerate AI thumbnail with clean artwork"
                     >
                       <span className="material-symbols-outlined text-[14px]">refresh</span>
                       Redesign AI Artwork
@@ -310,7 +310,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
 
                   {/* Diffusion Engine Info */}
                   <div className="p-2.5 bg-[#0C0E11] rounded-lg border border-[#464555]/30 text-[11px] text-[#918FA1] leading-relaxed">
-                    <span className="text-[#4EDEA3] font-semibold">Pixazo AI Gateway:</span> The image generator renders the high-impact hook text overlay directly into the Studio Ghibli artwork, sized large (~1/4 of image) for maximum YouTube click-through rate.
+                    <span className="text-[#4EDEA3] font-semibold">Pixazo AI Gateway:</span> Generates pure 16:9 widescreen artwork with zero text overlay, keeping the image cinematic, clean, and visually captivating.
                   </div>
 
                   {/* High-CTR Hook Input (~1/4 of Image) */}
@@ -318,7 +318,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-[#4EDEA3] flex items-center gap-1 font-bold">
                         <span className="material-symbols-outlined text-[13px]">bolt</span>
-                        Thumbnail Hook (~1/4 of image):
+                        Thumbnail Theme / Hook Concept:
                       </label>
                       <span className="text-[9px] font-mono text-[#918FA1]">Eye-Catchy & Bold</span>
                     </div>
@@ -336,7 +336,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                         onClick={() => handleApplyTitle(undefined, selectedHook)}
                         disabled={isGeneratingThumb || !selectedHook.trim()}
                         className="px-3 py-2 rounded-lg bg-[#4EDEA3] hover:bg-[#4EDEA3]/80 text-[#0C0E11] text-xs font-black cursor-pointer disabled:opacity-50 transition-all shrink-0 uppercase tracking-wide"
-                        title="Generate thumbnail with this large hook"
+                        title="Generate clean thumbnail artwork for this concept"
                       >
                         Generate
                       </button>
@@ -371,9 +371,9 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-mono uppercase tracking-wider text-[#FFB95F] flex items-center gap-1 font-bold">
                         <span className="material-symbols-outlined text-[13px]">history_edu</span>
-                        Ghibli Story Subtitle (Not Plain Font):
+                        Story Narrative / Atmosphere:
                       </label>
-                      <span className="text-[9px] font-mono text-[#918FA1]">Hand-Lettered Cursive</span>
+                      <span className="text-[9px] font-mono text-[#918FA1]">Narrative Tone</span>
                     </div>
                     <div className="flex gap-2">
                       <input
@@ -389,7 +389,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
                         onClick={() => handleApplyTitle(undefined, undefined, selectedSubtitle)}
                         disabled={isGeneratingThumb || !selectedSubtitle.trim()}
                         className="px-3 py-2 rounded-lg bg-[#FFB95F]/20 hover:bg-[#FFB95F]/30 text-[#FFB95F] text-xs font-bold border border-[#FFB95F]/50 cursor-pointer disabled:opacity-50 transition-all shrink-0"
-                        title="Update Ghibli subtitle"
+                        title="Apply Story Atmosphere"
                       >
                         Apply
                       </button>

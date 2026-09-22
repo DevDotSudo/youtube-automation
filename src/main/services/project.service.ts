@@ -102,8 +102,8 @@ export class ProjectService {
       const sceneDirPath = path.join(projectPath, 'scenes', folderNum);
       fs.mkdirSync(sceneDirPath, { recursive: true });
 
-      const overlayText = PromptService.generateOverlayText(ps.text);
-      const prompt = PromptService.buildPrompt(ps.text, overlayText, undefined, undefined, visualNiche);
+      const overlayText = '';
+      const prompt = PromptService.buildPrompt(ps.text, undefined, undefined, undefined, visualNiche);
 
       return {
         id: sceneId,

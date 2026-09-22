@@ -1,11 +1,6 @@
 /**
- * PromptService: Generates breathtaking Studio Ghibli hand-painted anime prompts
- * in the aesthetic of Hayao Miyazaki and Makoto Shinkai.
- * 
- * CRITICAL RULE:
- * - Every image MUST directly match and illustrate what is being spoken in the speech.
- * - Clean visual storytelling with ZERO text, letters, or subtitles.
- * - Lush watercolor backgrounds, emotional character design, nostalgic atmospheric lighting.
+ * PromptService: Generates breathtaking cinematic visual prompts across 13 distinct niches
+ * with strict zero-text-overlay enforcement for pure visual artwork.
  */
 export interface InImageTextSpec {
   text: string;
@@ -13,22 +8,10 @@ export interface InImageTextSpec {
 }
 
 export class PromptService {
-  /**
-   * Detects contextual in-image text only for rare diegetic artifacts (antique signs/maps).
+/**
+   * Strictly disabled - all image generations must be 100% textless without any text overlay.
    */
-  static detectContextualInImageText(scriptLine: string, concept?: string): InImageTextSpec | null {
-    const conceptLower = (concept || '').toLowerCase();
-    const scriptLower = (scriptLine || '').toLowerCase();
-
-    if (['signpost', 'marker', 'trail sign'].some((k) => conceptLower.includes(k))) {
-      if (['path', 'way', 'north', 'sea', 'town', 'village'].some((k) => (scriptLower + ' ' + conceptLower).includes(k))) {
-        return {
-          text: 'TOWN',
-          location: 'carved wooden trail signpost'
-        };
-      }
-    }
-
+  static detectContextualInImageText(_scriptLine: string, _concept?: string): InImageTextSpec | null {
     return null;
   }
 
@@ -371,59 +354,60 @@ export class PromptService {
   static buildPrompt(
     scriptLine: string,
     visualConceptOverride?: string,
-    shotType: string = "WIDE_SCENE",
+    shotType: string = 'WIDE_SCENE',
     environmentDescription?: string,
     niche?: string
   ): string {
     const cleanLine = (scriptLine || '')
-      .replace(/[\"\n\r]/g, ' ')
+      .replace(/["\n\r]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
     const derived = this.deriveSpeechConnectedConcept(cleanLine);
-    const concept = visualConceptOverride || derived.visualConcept;
-    const env = environmentDescription || derived.environmentDescription;
-    const inImageText = this.detectContextualInImageText(cleanLine, concept);
+    const concept = (visualConceptOverride || derived.visualConcept || cleanLine || 'dramatic story moment')
+      .replace(/["\n\r]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const env = (environmentDescription || derived.environmentDescription || 'cinematic atmosphere')
+      .replace(/["\n\r]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const cleanShot = (shotType || 'WIDE_SCENE')
+      .replace(/["\n\r]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     const art = this.getArtDirection(niche);
-
-    const inImageSection = inImageText
-      ? `IN-IMAGE TEXT SPECIFICATION:
-- Clearly display the subtle carved text "${inImageText.text}" on the ${inImageText.location}.
-- Strictly NO other random words, watermarks, gibberish letters, or background captions.`
-      : `STRICTLY NO TEXT:
-- No text, no words, no letters, no captions, no typography, no watermarks anywhere in this illustration.`;
 
     const dynamicExclusions = art.exclusions.map((e) => `- ${e}`).join('\n');
     const dynamicDirectives = art.styleDirectives.map((d) => `- ${d}`).join('\n');
 
     const narrationBlock = cleanLine
-      ? `STORY NARRATION (ILLUSTRATE THIS EXACT SCENE):
-"${cleanLine}"
+      ? `STORY SCENE CONTEXT:
+The visual illustration portrays the narrative event: ${cleanLine}
 
 `
       : '';
 
     return `${art.header}
+ABSOLUTE REQUIREMENT: CLEAN TEXTLESS ARTWORK. Strictly NO text overlay, NO title cards, NO typography, NO words, NO letters, NO numbers, NO subtitles, NO captions, NO signs, and NO watermarks anywhere in this image.
 
 ${narrationBlock}VISUAL SCENE DETAILS:
-"${concept}"
+${concept}
 
 SHOT TYPE:
-"${shotType}"
+${cleanShot}
 
 ENVIRONMENT & ATMOSPHERE:
-"${env}"
-
-${inImageSection}
+${env}
 
 ART DIRECTION & STYLE:
 ${dynamicDirectives}
 
 STRICT EXCLUSIONS (DO NOT INCLUDE):
 ${dynamicExclusions}
-- text, words, letters, captions, typography, subtitles, watermarks, signatures
+- text overlay, title overlay, typography, font, words, letters, alphabet, numbers, subtitles, captions, watermarks, signatures, logos, labels, writing, banners
 
-16:9 widescreen landscape.`;
+16:9 widescreen landscape, pure visual artwork without any text or overlay.`;
   }
 }
 

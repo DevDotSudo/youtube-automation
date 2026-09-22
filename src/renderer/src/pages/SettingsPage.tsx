@@ -359,10 +359,10 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-[#C7C4D8]">Thumbnail Hook Text Overlay</label>
+            <label className="text-xs font-medium text-[#C7C4D8]">Image Text Overlay</label>
             <div className="h-9 px-3 bg-[#0C0E11] text-[#4EDEA3] text-xs font-mono rounded-lg border border-[#464555]/40 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[16px]">check_circle</span>
-              <span>Enabled (Monumental Title + Subtitle Hook)</span>
+              <span className="material-symbols-outlined text-[16px] text-[#4EDEA3]">block</span>
+              <span>Disabled (Pure Clean Artwork - Zero Text Overlay)</span>
             </div>
           </div>
         </div>

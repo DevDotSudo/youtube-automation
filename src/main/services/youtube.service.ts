@@ -4,6 +4,7 @@ import { execFileSync } from 'child_process';
 import { ProjectRepository } from '../database/repositories/project.repository';
 import { SceneRepository } from '../database/repositories/scene.repository';
 import { ImageService } from './image.service';
+import { PromptService } from './prompt.service';
 
 export interface YouTubeMetadataPack {
   titles: string[];
@@ -331,18 +332,21 @@ export class YouTubeService {
 
     // 7. Script-Grounded Thumbnail Prompt (Studio Ghibli Anime with AI-Generated Title Overlay)
     const cleanTitle = (titles[0] || projectName || 'The Untold Story').replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+    const projectNiche = (project as any).visualNiche || 'stoic_philosophy';
+    const art = PromptService.getArtDirection(projectNiche);
     const thumbnailPrompt =
-      `High-CTR 16:9 Studio Ghibli anime YouTube thumbnail illustration in the aesthetic of Hayao Miyazaki and Makoto Shinkai. ` +
-      `IN-IMAGE TEXT SPECIFICATION: ` +
-      `- Prominently and artistically render the video title text "${cleanTitle}" as a bold, cinematic title overlay integrated into the scene. ` +
-      `- Elegant storybook typography with warm golden-amber or luminous ivory lettering with soft dark outline for perfect legibility against the anime landscape. ` +
-      `- Strictly NO other random words, watermarks, gibberish letters, or background captions. ` +
-      `SCENE & ART DIRECTION: ` +
-      `A young anime protagonist standing on a sun-drenched grassy hill covered in wildflowers, gazing out toward a sparkling coastal bay under massive sunlit cumulus clouds. ` +
-      `Authentic hand-painted gouache and watercolor textures, warm golden hour sunlight, deep emerald foliage, and nostalgic anime cinematography. ` +
-      `16:9 widescreen landscape.`;
+      `${art.header} ` +
+      `ABSOLUTE REQUIREMENT: CLEAN TEXTLESS ARTWORK. ` +
+      `Strictly NO text overlay, NO title overlay, NO headline, NO typography, NO words, NO letters, NO numbers, NO subtitles, NO captions, and NO watermarks anywhere in the image. ` +
+      `100% pure cinematic artwork with magnificent visual depth and clarity. ` +
+      `SCENE COMPOSITION: ` +
+      `A dramatic, eye-catching widescreen composition illustrating: ${cleanTitle}. Rich atmospheric lighting, breathtaking environmental depth, and masterwork storytelling. ` +
+      `ART DIRECTION & STYLE: ` +
+      `${art.styleDirectives.join('; ')}. ` +
+      `STRICT EXCLUSIONS (DO NOT INCLUDE): ` +
+      `${art.exclusions.join(', ')}, text overlay, title overlay, headline, words, letters, subtitles, captions, typography, font, watermarks, signatures, logos. ` +
+      `16:9 widescreen landscape, pure visual artwork with zero text.`;
 
-    // Existing saved thumbnail files
     const finalThumb = path.join(project.projectPath, 'output', 'thumbnail.png');
     const rawThumb = path.join(project.projectPath, 'output', 'thumbnail_raw.png');
     const existingThumbnailPath = fs.existsSync(finalThumb) ? finalThumb : (project.thumbnailPath && fs.existsSync(project.thumbnailPath) ? project.thumbnailPath : undefined);
@@ -493,20 +497,24 @@ export class YouTubeService {
     const metadata = this.generateMetadata(projectId);
     const titleToUse = (selectedTitle || metadata.titles[0] || project.name || 'Untitled Story').trim();
     const cleanTitle = titleToUse.replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
-    const hookToUse = (selectedHook || (metadata.thumbnailHooks && metadata.thumbnailHooks[0]) || this.generateHookOptions(cleanTitle)[0] || 'NEVER LOOK BACK').trim();
-    const subtitleToUse = (selectedSubtitle || (metadata.thumbnailSubtitles && metadata.thumbnailSubtitles[0]) || this.generateStorySubtitleOptions(cleanTitle)[0] || 'A story about a lonely journey along the sea').trim();
+    const visualFocus = (selectedHook || selectedSubtitle || cleanTitle).replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
 
     let prompt = customPrompt;
     if (!prompt) {
+      const projectNiche = (project as any).visualNiche || 'stoic_philosophy';
+      const art = PromptService.getArtDirection(projectNiche);
       prompt =
-        `Studio Ghibli real-world slice-of-life anime in the grounded realism aesthetic of Whisper of the Heart and From Up on Poppy Hill. Grounded everyday realism, NO fairytale, NO fantasy. ` +
-        `IN-IMAGE TYPOGRAPHY (MONUMENTAL GARGANTUAN TITLE HEADLINE FILLING OVER HALF OF THE IMAGE): ` +
-        `- Massive, colossal two-line headline typography dominating more than half of the entire image canvas (occupying 55%-65% of the frame across the upper and middle canvas). ` +
-        `- Line 1 (Main Hook / Title): "${hookToUse}" in gigantic, monumental, ultra-bold thick golden-amber Studio Ghibli storybook calligraphy with heavy dark drop-shadow and bold outline, stretching boldly across the sky. ` +
-        `- Line 2 (Story Subtitle): "${subtitleToUse}" in huge, prominent matching bold storybook lettering directly below Line 1, only slightly smaller than Line 1. ` +
-        `- The text headline is the primary focal point of the thumbnail, gigantic, commanding, and filling over half the composition for maximum YouTube click-through rate. ` +
-        `SCENE: ` +
-        `A realistic coastal railway with a young student in casual summer clothes looking out at a commuter train rolling along the seaside tracks by the calm blue ocean under sunlit clouds. Grounded 1990s Ghibli slice-of-life watercolor realism. 16:9 widescreen.`;
+        `${art.header} ` +
+        `ABSOLUTE REQUIREMENT: CLEAN TEXTLESS ARTWORK. ` +
+        `Strictly NO text overlay, NO title overlay, NO headline, NO typography, NO words, NO letters, NO numbers, NO subtitles, NO captions, and NO watermarks anywhere in the image. ` +
+        `100% pure cinematic artwork with magnificent visual depth and clarity. ` +
+        `SCENE COMPOSITION: ` +
+        `A dramatic, eye-catching widescreen composition illustrating: ${visualFocus || cleanTitle}. Rich atmospheric lighting, breathtaking environmental depth, and masterwork storytelling. ` +
+        `ART DIRECTION & STYLE: ` +
+        `${art.styleDirectives.join('; ')}. ` +
+        `STRICT EXCLUSIONS (DO NOT INCLUDE): ` +
+        `${art.exclusions.join(', ')}, text overlay, title overlay, headline, words, letters, subtitles, captions, typography, font, watermarks, signatures, logos. ` +
+        `16:9 widescreen landscape, pure visual artwork with zero text.`;
     }
 
     const rawOutputPath = path.join(project.projectPath, 'output', 'thumbnail_raw.png');

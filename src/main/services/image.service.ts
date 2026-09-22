@@ -30,6 +30,27 @@ export class ImageService {
     return this.buildGhibliPrompt(concept, sceneText);
   }
 
+    /**
+   * Sanitizes any prompt to guarantee 100% clean, textless image output
+   * with zero text overlay, no titles, and no embedded words.
+   */
+  static sanitizePromptForNoText(rawPrompt: string): string {
+    let p = (rawPrompt || '').trim();
+    // Strip any legacy in-image text instructions
+    p = p.replace(/IN-IMAGE TYPOGRAPHY[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
+    p = p.replace(/IN-IMAGE TEXT SPECIFICATION[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
+    p = p.replace(/Prominently and artistically render the video title text[^\n.]*[.\n]?/gi, '');
+
+    // Ensure strict no-text directive is enforced
+    if (!p.includes('CLEAN TEXTLESS ARTWORK') && !p.includes('NO text overlay')) {
+      p = `CLEAN TEXTLESS ARTWORK: Absolutely NO text overlay, NO title cards, NO words, NO letters, NO subtitles, NO captions, NO typography, NO watermarks.\n\n` + p;
+    }
+    if (!p.toLowerCase().includes('text overlay')) {
+      p += `\n\nSTRICT EXCLUSIONS: text overlay, title overlay, typography, font, words, letters, subtitles, captions, watermarks, signatures, logos, labels, writing.`;
+    }
+    return p.trim();
+  }
+
   static async generateImage(
     prompt: string,
     outputPath: string,
@@ -241,7 +262,8 @@ export class ImageService {
       chosenModel = getPixazoModel() || 'flux-1-schnell';
     }
 
-    const { endpoint, payload } = this.resolveModelConfig(chosenModel, prompt, width, height);
+    const sanitized = this.sanitizePromptForNoText(prompt);
+    const { endpoint, payload } = this.resolveModelConfig(chosenModel, sanitized, width, height);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -447,28 +469,30 @@ export class ImageService {
    * Constructs the cinematic Studio Ghibli prompt for a scene
    */
   static buildGhibliPrompt(concept: string, sceneText?: string): string {
-    const cleanSpeech = (sceneText || '').replace(/[\"\r\n]+/g, ' ').slice(0, 180).trim();
+    const cleanSpeech = (sceneText || '').replace(/["\r\n]+/g, ' ').slice(0, 180).trim();
     const cleanConcept = (concept || cleanSpeech || 'heartfelt story moment')
-      .replace(/[\"\r\n]+/g, ' ')
+      .replace(/["\r\n]+/g, ' ')
       .slice(0, 180)
       .trim();
 
-    const narrationBlock = cleanSpeech ? `STORY NARRATION (ILLUSTRATE THIS EXACT SCENE):\n"${cleanSpeech}"\n\n` : '';
+    const narrationBlock = cleanSpeech ? `STORY SCENE CONTEXT:\nThe visual illustration portrays: ${cleanSpeech}\n\n` : '';
 
     return `Create a breathtaking Studio Ghibli hand-painted anime illustration in the aesthetic of Hayao Miyazaki and Makoto Shinkai.
+ABSOLUTE REQUIREMENT: CLEAN TEXTLESS ARTWORK. Strictly NO text overlay, NO title cards, NO words, NO letters, NO subtitles, NO captions, NO typography, and NO watermarks anywhere in the image.
 
 VISUAL SCENE DETAILS:
-"${cleanConcept}"
+${cleanConcept}
 
 ${narrationBlock}ART DIRECTION & STYLE:
-- Authentic Studio Ghibli real-world slice-of-Life anime aesthetic (Whisper of the Heart, From Up on Poppy Hill, Ocean Waves)
+- Authentic Studio Ghibli real-world slice-of-life anime aesthetic (Whisper of the Heart, From Up on Poppy Hill, Ocean Waves)
 - Grounded everyday realism: NO fairytale, NO fantasy, NO magic, NO surrealism
 - Authentic everyday human characters in casual clothing
 - Traditional hand-painted gouache and watercolor background
 - Masterwork grounded anime cinematography
 - 16:9 widescreen composition
 
-STRICTLY NO TEXT:
-- No text, no words, no letters, no captions, no typography, no watermarks anywhere in this illustration.`;
+STRICT EXCLUSIONS (DO NOT INCLUDE):
+- text overlay, title overlay, words, letters, captions, typography, subtitles, watermarks, signatures, labels, writing
+- fairytale, fantasy magic, floating islands, sparkles, 3D CGI`;
   }
 }
