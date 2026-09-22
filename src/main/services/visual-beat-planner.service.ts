@@ -87,7 +87,8 @@ export class VisualBeatPlannerService {
         text,
         shotType,
         i,
-        beatCount
+        beatCount,
+        visualNiche
       );
 
       // Extract optional keyword
@@ -201,11 +202,12 @@ export class VisualBeatPlannerService {
     fullText: string,
     _shotType: VisualShotType,
     _beatIndex: number,
-    _totalBeats: number
+    _totalBeats: number,
+    visualNiche?: string
   ): { visualConcept: string; environmentDescription: string } {
     // Full text provides the complete scene narrative (setting + subject + action)
     const textToAnalyze = (fullText && fullText.trim().length > 0) ? fullText : clauseText;
-    return PromptService.deriveSpeechConnectedConcept(textToAnalyze);
+    return PromptService.deriveSpeechConnectedConcept(textToAnalyze, visualNiche);
   }
 
   /**

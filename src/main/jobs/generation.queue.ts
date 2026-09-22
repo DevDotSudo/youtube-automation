@@ -205,7 +205,7 @@ export class GenerationQueue {
             const parentScene = scenes.find((s) => s.id === unreadyBeat.sceneId) || scenes[0];
             emitProgress(audioDoneCount, beatDoneCount, parentScene, unreadyBeat, `Healing missing image for Scene ${parentScene.sceneIndex}, Beat ${unreadyBeat.beatIndex + 1}...`);
 
-            const fallbackPrompt = ImageService.buildResilientFallbackPrompt(unreadyBeat.visualConcept, parentScene.scriptText);
+            const fallbackPrompt = ImageService.buildResilientFallbackPrompt(unreadyBeat.visualConcept, parentScene.scriptText, project.visualNiche);
             try {
               await ImageService.generateWithRetry(fallbackPrompt, unreadyBeat.imagePath!);
               if (fs.existsSync(unreadyBeat.imagePath!) && fs.statSync(unreadyBeat.imagePath!).size > 500) {

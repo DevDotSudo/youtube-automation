@@ -1,3 +1,4 @@
+import { PromptService } from './prompt.service';
 ﻿import fs from 'fs';
 import path from 'path';
 import { getPixazoApiKey, getPixazoModel, getPixazoConcurrency } from '../env';
@@ -26,8 +27,8 @@ export class ImageService {
     return { ready: true, model, keyConfigured: true, message: 'Pixazo API key configured' };
   }
 
-  static buildResilientFallbackPrompt(concept: string, sceneText?: string): string {
-    return this.buildGhibliPrompt(concept, sceneText);
+  static buildResilientFallbackPrompt(concept: string, sceneText?: string, visualNiche?: string): string {
+    return PromptService.buildPrompt(sceneText || '', concept, 'WIDE_SCENE', undefined, visualNiche);
   }
 
     /**
@@ -40,14 +41,27 @@ export class ImageService {
     p = p.replace(/IN-IMAGE TYPOGRAPHY[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
     p = p.replace(/IN-IMAGE TEXT SPECIFICATION[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
     p = p.replace(/Prominently and artistically render the video title text[^\n.]*[.\n]?/gi, '');
+    p = p.replace(/STORY SCENE CONTEXT:\s*The visual illustration portrays the narrative event:[^\n]*\n+/gi, '');
+
+    // Purge dangerous keywords that trigger diffusion models to draw text/labels/diagrams
+    p = p.replace(/\binfographics?\b/gi, 'visual composition');
+    p = p.replace(/\bexplainer cartoons?\b/gi, 'character illustration');
+    p = p.replace(/\bexplainer\b/gi, 'visual storytelling');
+    p = p.replace(/\bdiagrams?\b/gi, 'composition');
+    p = p.replace(/\bcharts?\b/gi, 'visual scene');
+    p = p.replace(/\bcallout arrows?\b/gi, 'visual focus');
+    p = p.replace(/\bspeech bubbles?\b/gi, '');
 
     // Ensure strict no-text directive is enforced
-    if (!p.includes('CLEAN TEXTLESS ARTWORK') && !p.includes('NO text overlay')) {
-      p = `CLEAN TEXTLESS ARTWORK: Absolutely NO text overlay, NO title cards, NO words, NO letters, NO subtitles, NO captions, NO typography, NO watermarks.\n\n` + p;
+    if (!p.includes('WORDLESS VISUAL SCENE') && !p.includes('CLEAN TEXTLESS ARTWORK')) {
+      p = `WORDLESS VISUAL SCENE: Absolutely NO text, NO speech bubbles, NO dialogue boxes, NO callout arrows, NO labels, NO words, NO letters, NO numbers, NO subtitles, NO captions, NO typography, NO watermarks.\n\n` + p;
     }
-    if (!p.toLowerCase().includes('text overlay')) {
-      p += `\n\nSTRICT EXCLUSIONS: text overlay, title overlay, typography, font, words, letters, subtitles, captions, watermarks, signatures, logos, labels, writing.`;
+
+    // Always append comprehensive negative reinforcement
+    if (!p.toLowerCase().includes('speech bubbles')) {
+      p += `\n\nSTRICT EXCLUSIONS (DO NOT DRAW): speech bubbles, speech balloons, dialogue boxes, thought bubbles, callout arrows, annotated arrows, labels, charts, diagrams, infographics, word clouds, mock text, floating words, letters, alphabet, numbers, signs, banners, titles, subtitles, captions, watermarks, writing.`;
     }
+
     return p.trim();
   }
 

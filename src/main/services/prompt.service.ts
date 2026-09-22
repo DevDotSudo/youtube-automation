@@ -19,122 +19,150 @@ export class PromptService {
    * Semantically analyzes speech narration to derive vivid, directly connected
    * Studio Ghibli anime scenes.
    */
-  static deriveSpeechConnectedConcept(scriptLine: string): { visualConcept: string; environmentDescription: string } {
-    const clean = (scriptLine || '').replace(/[\"\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+  static deriveSpeechConnectedConcept(scriptLine: string, niche?: string): { visualConcept: string; environmentDescription: string } {
+    const clean = (scriptLine || '')
+      .replace(/["\n\r]/g, ' ')
+      .replace(/[$€£]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     if (!clean) {
+      if (niche === 'stickman_doodle') {
+        return {
+          visualConcept: 'A humorous minimalist stick figure character standing with hands on hips in an expressive stance. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, zero background clutter, pure white space.'
+        };
+      }
       return {
-        visualConcept: 'A picturesque Studio Ghibli landscape with rolling green meadows, wild flowers, distant mountain peaks, and cinematic golden hour sunlight.',
-        environmentDescription: 'Lush hand-painted anime landscape with soft golden sunlight and nostalgic atmosphere.'
+        visualConcept: 'A picturesque cinematic landscape with dramatic natural lighting and rich atmosphere.',
+        environmentDescription: 'Atmospheric natural environment with cinematic lighting and serene depth.'
       };
     }
 
     const lower = clean.toLowerCase();
 
-    // 1. Welcome / Introduction to Stories / Magical Impossible Places
-    if (anyMatch(lower, ['welcome', 'unseen stories', 'impossible places', 'magical stories', 'subscribe', 'channel'])) {
+    // 1. Stickman Doodle Niche Specific Derivations
+    if (niche === 'stickman_doodle') {
+      // Money / Purchases / Rent / Bills / Expensive / Broke
+      if (anyMatch(lower, ['money', 'wallet', 'purchase', 'purchases', 'rent', 'bill', 'bills', 'dollar', 'dollars', 'pay', 'paid', 'paycheck', 'spend', 'spent', 'cost', 'expensive', 'broke', 'gone', 'account', 'disappear'])) {
+        return {
+          visualConcept: 'A humorous minimalist stick figure character looking down in bewilderment at an open empty wallet, with empty pants pockets turned inside out. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, zero background clutter, pure white space.'
+        };
+      }
+      // Buckets / Divide / Split / System / Save / Rule / Budget
+      if (anyMatch(lower, ['bucket', 'buckets', 'divide', 'split', 'three', 'system', 'save', 'savings', 'rule', 'percent', 'percentage', 'budget', 'manage', 'plan'])) {
+        return {
+          visualConcept: 'A minimalist stick figure character standing thoughtfully with arms crossed between three simple blank hand-drawn buckets. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black marker lines, pure white space.'
+        };
+      }
+      // Coffee / Food / Dining / Lunch / Dinner / Restaurant
+      if (anyMatch(lower, ['coffee', 'tea', 'cup', 'mug', 'food', 'lunch', 'dinner', 'snack', 'drink', 'eat'])) {
+        return {
+          visualConcept: 'A minimalist stick figure character sitting at a tiny hand-drawn desk, holding a steaming coffee mug with tiny steam swirls. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, pure white space.'
+        };
+      }
+      // Technology / Laptop / Computer / Phone / Subscriptions / App
+      if (anyMatch(lower, ['subscription', 'subscriptions', 'laptop', 'computer', 'screen', 'phone', 'device', 'app', 'online', 'service'])) {
+        return {
+          visualConcept: 'A minimalist stick figure character seated in front of a laptop computer with an expressive surprised expression. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, pure white space.'
+        };
+      }
+      // Confusion / Question / Why / Problem / Shock / Doubt
+      if (anyMatch(lower, ['why', 'how', 'wonder', 'confused', 'mystery', 'problem', 'shock', 'question', 'doubt'])) {
+        return {
+          visualConcept: 'A curious minimalist stick figure character scratching its head with a comical bewildered expression, a single simple question mark drawn beside it. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, pure white space.'
+        };
+      }
+      // Growth / Rich / Success / Victory / Happy / Future
+      if (anyMatch(lower, ['rich', 'wealth', 'success', 'grow', 'growth', 'win', 'future', 'invest', 'goal', 'happy', 'freedom'])) {
+        return {
+          visualConcept: 'An energetic minimalist stick figure character jumping happily with arms raised high in triumph. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black marker lines, pure white space.'
+        };
+      }
+      // Work / Job / Office / Busy / Tired
+      if (anyMatch(lower, ['work', 'job', 'office', 'boss', 'tired', 'grind', 'busy', 'desk', 'hours'])) {
+        return {
+          visualConcept: 'A tired minimalist stick figure character sitting at an uncluttered hand-drawn office desk resting chin in hand. Wordless character visual.',
+          environmentDescription: 'Clean solid white background, bold black ink lines, pure white space.'
+        };
+      }
+      // Default Stickman
       return {
-        visualConcept: 'A quaint cobblestone town square with an intriguing vintage curiosity bookshop and glowing amber lanterns, inviting travelers into a world of impossible magical stories.',
-        environmentDescription: 'A quiet cobblestone European town street in peaceful afternoon light with potted flowers and quaint storefronts.'
+        visualConcept: 'An expressive minimalist stick figure character with dynamic gestures portraying the scene mood through physical action. Pure wordless visual character action.',
+        environmentDescription: 'Clean solid white background, bold black ink lines, zero background clutter, pure white space.'
       };
     }
 
-    // 2. Cafe / Coffee / Tea - Rainy Night Discovery
-    if (anyMatch(lower, ['café', 'cafe', 'coffee', 'tea', 'bistro', 'diner']) && anyMatch(lower, ['rain', 'rainy', 'night', 'street', 'noticed', 'glowing', 'alley'])) {
+    // 2. Stoic Philosophy Niche Specific Derivations
+    if (niche === 'stoic_philosophy') {
+      if (anyMatch(lower, ['time', 'death', 'memento', 'mori', 'hour', 'life', 'fleeting', 'pass', 'years', 'clock'])) {
+        return {
+          visualConcept: 'An antique brass hourglass with golden sand trickling through, resting beside a flickering wax candle and a weathered stone carving in deep chiaroscuro.',
+          environmentDescription: 'Contemplative ancient stone alcove, warm flickering candlelight, deep dramatic shadows.'
+        };
+      }
+      if (anyMatch(lower, ['obstacle', 'adversity', 'storm', 'struggle', 'strength', 'hardship', 'endure', 'control', 'power'])) {
+        return {
+          visualConcept: 'A solitary classical figure in draped robes standing resolute upon a rugged coastal cliff against breaking waves and breaking sunbeams.',
+          environmentDescription: 'Monumental ancient coastal cliffs, dramatic storm clouds, golden breaking sunbeams.'
+        };
+      }
       return {
-        visualConcept: 'A young anime traveler in a coat walking along a quiet rain-slicked cobblestone street at night, looking with surprise and curiosity at a small charming café glowing warmly with amber light at the end of the alley.',
-        environmentDescription: 'Atmospheric rainy European town street at night, wet reflective cobblestones reflecting warm golden streetlamps and glowing café windows.'
+        visualConcept: 'A weathered classical Roman marble bust in dramatic chiaroscuro lighting, an ancient parchment scroll resting nearby on aged dark stone.',
+        environmentDescription: 'Solemn ancient stone hall, warm candlelight casting deep shadows across classical architecture.'
       };
     }
 
-    // 3. Cafe Interior / Table / Waiting Coffee Cup
-    if (anyMatch(lower, ['table', 'empty', 'waiting', 'cup of coffee', 'cup', 'steaming', 'ceramic']) || (anyMatch(lower, ['café', 'cafe', 'coffee', 'inside']) && anyMatch(lower, ['empty', 'waiting', 'cup', 'table']))) {
+    // 3. Cyberpunk Noir Niche Specific Derivations
+    if (niche === 'cyberpunk_noir') {
       return {
-        visualConcept: 'Inside a quiet retro anime café with empty polished wooden tables in warm amber lighting, where a single steaming ceramic cup of coffee sits waiting on a wooden table.',
+        visualConcept: 'A solitary trench-coated silhouette standing on a rain-slicked high-rise balcony looking out across a towering neon-lit metropolis.',
+        environmentDescription: 'Atmospheric perpetual rain, reflections of cyan and magenta neon glows on wet asphalt, distant flying vehicles.'
+      };
+    }
+
+    // 4. Studio Ghibli or Storytelling Niches
+    if (anyMatch(lower, ['café', 'cafe', 'coffee', 'tea', 'bistro', 'diner'])) {
+      return {
+        visualConcept: 'Inside a quiet retro café with polished wooden tables in warm amber lighting, a single steaming ceramic cup of coffee sitting waiting on a wooden table.',
         environmentDescription: 'Cozy vintage café interior with dark wood furniture, warm pendant lamps, gentle steam, and quiet peaceful atmosphere.'
       };
     }
-
-    // 4. Cafe Owner / Barista / Reassuring Smile
-    if (anyMatch(lower, ['owner', 'barista']) || (anyMatch(lower, ['smiled', 'smile', 'said']) && anyMatch(lower, ['appear', 'forgotten', 'seen', 'welcome']))) {
+    if (anyMatch(lower, ['train', 'station', 'journey', 'travel', 'sea', 'ocean', 'waves', 'shore'])) {
       return {
-        visualConcept: 'Medium view of a kind, gentle anime café owner with a warm reassuring smile standing behind a polished wooden counter, with vintage copper kettles and cups.',
-        environmentDescription: 'Warmly lit café interior, golden amber lamp glow, shelves of ceramic tea cups, and comforting nostalgic atmosphere.'
+        visualConcept: 'A scenic vintage coastal train car rolling past glistening emerald ocean waves under gigantic sunlit cumulus clouds.',
+        environmentDescription: 'Rustic vintage train car with polished wood and brass fixtures reflecting warm coastal sunlight.'
       };
     }
-
-    // 5. Heartfelt Conversation / Late Night / Rain Stopping
-    if (anyMatch(lower, ['talking', 'talked', 'stayed', 'spoke', 'conversation', 'kept inside', 'inside for years']) || (anyMatch(lower, ['stayed', 'talking']) && anyMatch(lower, ['rain', 'night', 'hours']))) {
+    if (anyMatch(lower, ['forest', 'tree', 'nature', 'moss', 'woods', 'shrine', 'ancient'])) {
       return {
-        visualConcept: 'Inside the cozy café late at night, a young anime man seated at a wooden table in deep, heartfelt conversation with the café owner, with rain trickling softly down the windowpane.',
-        environmentDescription: 'Intimate warm café setting, soft amber illumination, raindrops on the window glass, and deep emotional connection.'
-      };
-    }
-
-    // 6. Next Morning / Cafe Gone / Peace / No Longer Alone / Hope
-    if (anyMatch(lower, ['morning', 'next morning', 'sunrise', 'dawn']) && anyMatch(lower, ['gone', 'disappear', 'alone', 'no longer', 'felt', 'sunlight', 'months'])) {
-      return {
-        visualConcept: 'Bright morning sunlight washing over the quiet cobblestone street corner where the magical café once stood, a young anime man walking forward with a gentle peaceful smile and clear, hopeful eyes.',
-        environmentDescription: 'Fresh sun-drenched European street corner with crisp golden morning sunbeams, gentle breeze, and clear blue skies.'
-      };
-    }
-
-    // 7. Coastal Train / Railway / Ocean Travel
-    if (anyMatch(lower, ['train', 'station', 'railway', 'track', 'journey', 'travel', 'sea', 'ocean', 'waves', 'shore'])) {
-      return {
-        visualConcept: 'A scenic vintage coastal train car rolling past glistening emerald ocean waves under gigantic sunlit cumulus clouds, gentle sea breeze fluttering white curtains.',
-        environmentDescription: 'Rustic vintage train passenger car with polished mahogany benches and brass fixtures reflecting warm coastal sunlight.'
-      };
-    }
-
-    // 8. Ancient Forest / Shrine / Nature / Woodland Spirits
-    if (anyMatch(lower, ['forest', 'tree', 'ancient', 'shrine', 'spirit', 'nature', 'moss', 'woods', 'glade', 'temple'])) {
-      return {
-        visualConcept: 'An ancient moss-covered stone shrine nestled deep within a primeval emerald forest, with filtered golden sunbeams streaming through emerald canopy leaves.',
+        visualConcept: 'An ancient moss-covered stone shrine nestled deep within a primeval emerald forest, with filtered golden sunbeams streaming through canopy leaves.',
         environmentDescription: 'Enchanted woodland sanctuary with lush velvet moss, giant gnarled tree roots, and blooming wild bellflowers.'
       };
     }
 
-    // 9. Attic Bedroom / Open Window / Night / Dreams
-    if (anyMatch(lower, ['bed', 'sleep', 'bedroom', 'attic', 'window', 'dream', 'nightstand', 'pillow', 'quilt'])) {
+    // Universal Fallback (Grounded, niche-appropriate, strictly wordless)
+    if (niche === 'studio_ghibli') {
       return {
-        visualConcept: 'A cozy sunlit attic bedroom with exposed wooden ceiling beams, potted ferns, and an open window looking out across tiled rooftops toward starry twilight skies.',
-        environmentDescription: 'Rustic attic bedroom filled with warm amber candlelight, patchwork quilts, and stacks of antique illustrated storybooks.'
+        visualConcept: 'A heartfelt hand-painted slice-of-life anime scene illustrating the characters and setting with authentic watercolor warmth and gentle atmospheric lighting.',
+        environmentDescription: 'Lush hand-painted anime background with authentic watercolor textures, cinematic natural lighting.'
       };
     }
 
-    // 10. Countryside Cottage / Kitchen / Hearth / Food
-    if (anyMatch(lower, ['cottage', 'kitchen', 'hearth', 'bread', 'stove', 'cooking', 'fireplace', 'baking'])) {
-      return {
-        visualConcept: 'A charming European countryside cottage kitchen with copper pots hanging above a stone hearth, fresh crusty bread on a rustic table, and warm morning sunbeams.',
-        environmentDescription: 'Country kitchen filled with earthenware bowls, bunches of dried lavender, and soft morning mist outside the window.'
-      };
-    }
-
-    // 11. Rainy Walk / Umbrella / Cobblestones / Solitude
-    if (anyMatch(lower, ['rain', 'rainy', 'umbrella', 'puddle', 'storm', 'wet'])) {
-      return {
-        visualConcept: 'A solitary reflective young anime figure holding a clear umbrella on a quiet rain-washed cobblestone street, glowing paper lanterns reflecting in glistening street puddles.',
-        environmentDescription: 'Historic coastal town alleyway with weathered stone buildings, lush ivy vines, and gentle soft rain showers.'
-      };
-    }
-
-    // 12. Books / Library / Letter / Reading / Memories
-    if (anyMatch(lower, ['book', 'library', 'letter', 'read', 'write', 'story', 'history', 'memory', 'remember', 'scroll'])) {
-      return {
-        visualConcept: 'An antique wooden study or library filled with illustrated books and open parchment maps illuminated by warm lantern light.',
-        environmentDescription: 'Cozy library nook with floor-to-ceiling shelves, stained glass window casting colored light, and floating dust motes.'
-      };
-    }
-
-    // 13. Dynamic Direct Speech Grounding for Any General Story Sentence
     return {
-      visualConcept: `Studio Ghibli hand-painted anime scene directly illustrating: "${clean}". The artwork features the characters, setting, and emotional action described in the narration with authentic Hayao Miyazaki watercolor depth.`,
-      environmentDescription: 'Lush hand-painted anime background with authentic watercolor textures, cinematic natural lighting, and atmospheric perspective matching the spoken story.'
+      visualConcept: 'A cinematic, highly atmospheric visual scene capturing the subject and environment in evocative detail, completely wordless.',
+      environmentDescription: 'Atmospheric scene setting with natural lighting, deep textural details, and cinematic composition.'
     };
   }
 
-  static generateVisualConcept(scriptLine: string): string {
-    return this.deriveSpeechConnectedConcept(scriptLine).visualConcept;
+  static generateVisualConcept(scriptLine: string, niche?: string): string {
+    return this.deriveSpeechConnectedConcept(scriptLine, niche).visualConcept;
   }
 
   static generateOverlayText(_scriptLine: string): string {
@@ -149,18 +177,19 @@ export class PromptService {
     switch (niche) {
       case 'stickman_doodle':
         return {
-          header: 'Create a clean, expressive minimalist hand-drawn stickman illustration in modern viral YouTube explainer cartoon style (Casually Explained and MinutePhysics aesthetic).',
+          header: 'Create a clean, expressive minimalist hand-drawn stickman illustration in modern animated webcomic character art style (Casually Explained and MinutePhysics visual character aesthetic).',
           styleDirectives: [
             'Minimalist black ink line art on a clean white or dark chalkboard background',
             'Expressive, witty stick figure characters with dynamic gestures and clear emotions',
             'Simple hand-drawn props and subtle color accents (yellow, red, or cyan) to highlight key story elements',
-            'Clean infographic doodle composition with high clarity and humorous visual storytelling',
-            'Clear bold lines with hand-drawn marker texture, zero clutter'
+            'Pure wordless visual character storytelling with high clarity, silent visual comedy and physical actions',
+            'Clear bold lines with hand-drawn marker texture, zero clutter, zero annotations'
           ],
           exclusions: [
             'photorealism, 3D CGI render, realistic human skin, complex photographic textures',
             'detailed realistic face, eyes, hyper-detailed musculature',
-            'fairytale magic dust, glowing sparkles, blurry mess'
+            'fairytale magic dust, glowing sparkles, blurry mess',
+            'speech bubbles, thought bubbles, dialogue boxes, callout arrows, annotated arrows, labels, charts, diagrams, infographics, word clouds, mock text, writing, signs, banners'
           ]
         };
 
@@ -308,9 +337,9 @@ export class PromptService {
         return {
           header: 'Create an atmospheric retro-cyberpunk cityscape in the aesthetic of Blade Runner 1982 and Syd Mead.',
           styleDirectives: [
-            'Massive brutalist corporate pyramids piercing stormy perpetual rainclouds with towering holographic advertisements',
+            'Massive brutalist corporate pyramids piercing stormy perpetual rainclouds with towering geometric holographic light forms',
             'Wet asphalt reflecting neon cyan, amber, and hot magenta streetlights, dense flying vehicle traffic streaming between high-rises',
-            'Industrial retro-tech details: exposed steam conduits, neon noodle bar signage, rain-drenched trench-coated silhouettes',
+            'Industrial retro-tech details: exposed steam conduits, glowing neon architecture, rain-drenched trench-coated silhouettes',
             'High-contrast techno-noir lighting with deep blacks and rich optical neon glows'
           ],
           exclusions: [
