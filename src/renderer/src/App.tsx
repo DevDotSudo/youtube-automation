@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { NewProjectPage } from './pages/NewProjectPage';
+import { FacebookAutomationPage } from './pages/FacebookAutomationPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { GenerationPage } from './pages/GenerationPage';
 import { RenderPage } from './pages/RenderPage';
@@ -10,6 +11,7 @@ import { CompletedPage } from './pages/CompletedPage';
 import { SystemStatusPage } from './pages/SystemStatusPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PixazoTesterPage } from './pages/PixazoTesterPage';
+import { ClipsFinderPage } from './pages/ClipsFinderPage';
 
 export const App: React.FC = () => {
   return (
@@ -19,6 +21,8 @@ export const App: React.FC = () => {
           <Route path="/" element={<Navigate to="/new" replace />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/new" element={<NewProjectPage />} />
+          <Route path="/facebook" element={<FacebookAutomationPage />} />
+          <Route path="/clips" element={<ClipsFinderPage />} />
           <Route path="/project/:id/review" element={<ReviewPage />} />
           <Route path="/project/:id/generation" element={<GenerationPage />} />
           <Route path="/project/:id/render" element={<RenderPage />} />

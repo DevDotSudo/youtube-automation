@@ -13,7 +13,7 @@ export const SystemStatusPage: React.FC = () => {
   const model = status?.pixazoModel ?? 'flux-1-schnell';
 
   return (
-    <div className="p-8 flex flex-col gap-6 max-w-5xl mx-auto w-full select-none">
+    <div className="p-10 flex flex-col gap-6 w-full select-none">
       <div className="flex items-center justify-between pb-4 border-b border-[#464555]/30">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -23,7 +23,7 @@ export const SystemStatusPage: React.FC = () => {
           </div>
           <h1 className="text-2xl font-semibold text-[#E2E2E6] tracking-tight">System Status</h1>
           <p className="text-sm text-[#C7C4D8]">
-            Diagnostics for Pixazo AI 5x Parallel Engine, Kokoro TTS, SQLite, and FFmpeg media toolchains.
+            Diagnostics for Pixazo AI 5x Parallel Engine, Microsoft Edge Neural TTS, SQLite, and FFmpeg media toolchains.
           </p>
         </div>
 

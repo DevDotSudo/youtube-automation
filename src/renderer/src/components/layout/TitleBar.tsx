@@ -10,10 +10,10 @@ export const TitleBar: React.FC = () => {
       {/* Brand & Mode Identifier */}
       <div className="flex items-center gap-2.5 electron-no-drag">
         <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-[#8781FF] to-[#C4C0FF] flex items-center justify-center text-[#0C0E11] shadow-sm shadow-[#8781FF]/30">
-          <span className="material-symbols-outlined text-[13px] font-bold">auto_stories</span>
+          <span className="material-symbols-outlined text-[13px] font-bold">terminal</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs tracking-tight text-[#F0F0F3] font-bold font-display">GhibliForge</span>
+          <span className="text-xs tracking-tight text-[#F0F0F3] font-bold font-display">Sudo Automation</span>
           <span className="text-[10px] font-mono tracking-wider font-semibold text-[#8781FF] bg-[#8781FF]/10 px-1.5 py-0.5 rounded border border-[#8781FF]/25 uppercase">
             Storyteller Studio
           </span>
@@ -26,7 +26,7 @@ export const TitleBar: React.FC = () => {
 
       {/* Center project moniker if present */}
       <div className="hidden lg:flex items-center text-[11px] font-mono text-[#7D7A8B] tracking-wide">
-        <span>Studio Ghibli 16:9 Anime Production Pipeline</span>
+        <span>Sudo Automation · Autonomous Video Production Engine</span>
       </div>
 
       {/* Window Controls */}

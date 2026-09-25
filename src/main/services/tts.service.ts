@@ -3,6 +3,7 @@ import path from 'path';
 import { execFile } from 'child_process';
 import util from 'util';
 import { TimingService } from './timing.service';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 const execFileAsync = util.promisify(execFile);
 
@@ -75,7 +76,8 @@ export class TTSService {
     voice: string,
     outputWavPath: string,
     speed: number = 1.0,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    padDurationSec: number = 0
   ): Promise<string> {
     const cleanVoice = this.resolveVoice(voice);
     let lastErr: any = null;
@@ -88,7 +90,6 @@ export class TTSService {
       fs.mkdirSync(tempDir, { recursive: true });
 
       try {
-        const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
         const tts = new MsEdgeTTS();
         await tts.setMetadata(cleanVoice, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
 
@@ -106,12 +107,15 @@ export class TTSService {
           throw new Error('Edge TTS returned empty or invalid audio data');
         }
 
-        // Studio mastering chain: warmth EQ, de-harshness filter, broadcast presence limiter
+        // Single-pass studio mastering chain: warmth EQ, de-harshness filter, broadcast presence limiter,
+        // optional breath transition padding, and 48kHz stereo PCM normalization in ONE single ffmpeg run
+        const padFilter = padDurationSec > 0 ? `,apad=pad_dur=${padDurationSec.toFixed(3)}` : '';
         const studioFilter =
           'equalizer=f=220:width_type=o:width=1.2:g=1.5,' +
           'equalizer=f=6000:width_type=o:width=1.5:g=-1.0,' +
-          'compand=attacks=0.02:decays=0.2:points=-80/-80|-24/-20|0/-3:gain=1.5,' +
-          'aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo';
+          'compand=attacks=0.02:decays=0.2:points=-80/-80|-24/-20|0/-3:gain=1.5' +
+          padFilter +
+          ',aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo';
 
         await execFileAsync('ffmpeg', [
           '-y',
@@ -126,7 +130,7 @@ export class TTSService {
         lastErr = err;
         console.warn(`[TTSService] Edge TTS attempt ${attempt}/${maxRetries} failed: ${err.message || err}`);
         if (attempt < maxRetries) {
-          const delayMs = attempt * 1500;
+          const delayMs = attempt * 1200;
           await new Promise((r) => setTimeout(r, delayMs));
         }
       } finally {
@@ -147,35 +151,17 @@ export class TTSService {
     speed: number = 1.0
   ): Promise<{ finalWavPath: string; durationMs: number; needsReview: boolean }> {
     fs.mkdirSync(sceneDir, { recursive: true });
-    const rawPath = path.join(sceneDir, 'voice.raw.wav');
+
     const finalPath = path.join(sceneDir, 'voice.wav');
 
-    // 1. Generate Raw WAV: Premier Multilingual Neural Voice with expressive storytelling pacing & studio mastering
-    await this.generateEdgeTTS(text, voice, rawPath, speed);
-
-    // 2. Add natural 300ms breath transition between scenes and format to 48kHz stereo PCM
-    const rawDurationMs = await TimingService.getAudioDurationMs(rawPath);
-    const naturalDurationMs = (rawDurationMs || 3000) + 300;
-    const padSec = 0.3;
-
-    try {
-      await execFileAsync('ffmpeg', [
-        '-y',
-        '-i', rawPath,
-        '-af', `apad=pad_dur=${padSec.toFixed(3)},aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo`,
-        '-c:a', 'pcm_s16le',
-        finalPath
-      ]);
-    } catch (err) {
-      console.warn('[TTSService] ffmpeg apad failed, copying raw:', err);
-      fs.copyFileSync(rawPath, finalPath);
-    }
+    // Single-pass generation: synthesizes via Edge TTS, applies studio mastering EQ and 300ms scene breath padding in 1 ffmpeg call
+    await this.generateEdgeTTS(text, voice, finalPath, speed, 3, 0.3);
 
     const exactDurationMs = await TimingService.getAudioDurationMs(finalPath);
 
     return {
       finalWavPath: finalPath,
-      durationMs: exactDurationMs || naturalDurationMs,
+      durationMs: exactDurationMs || 3000,
       needsReview: false
     };
   }

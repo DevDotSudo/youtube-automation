@@ -1,3 +1,4 @@
+import { AiPromptGeneratorService } from './ai-prompt-generator.service';
 import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
@@ -502,19 +503,20 @@ export class YouTubeService {
     let prompt = customPrompt;
     if (!prompt) {
       const projectNiche = (project as any).visualNiche || 'stoic_philosophy';
-      const art = PromptService.getArtDirection(projectNiche);
-      prompt =
-        `${art.header} ` +
-        `ABSOLUTE REQUIREMENT: CLEAN TEXTLESS ARTWORK. ` +
-        `Strictly NO text overlay, NO title overlay, NO headline, NO typography, NO words, NO letters, NO numbers, NO subtitles, NO captions, and NO watermarks anywhere in the image. ` +
-        `100% pure cinematic artwork with magnificent visual depth and clarity. ` +
-        `SCENE COMPOSITION: ` +
-        `A dramatic, eye-catching widescreen composition illustrating: ${visualFocus || cleanTitle}. Rich atmospheric lighting, breathtaking environmental depth, and masterwork storytelling. ` +
-        `ART DIRECTION & STYLE: ` +
-        `${art.styleDirectives.join('; ')}. ` +
-        `STRICT EXCLUSIONS (DO NOT INCLUDE): ` +
-        `${art.exclusions.join(', ')}, text overlay, title overlay, headline, words, letters, subtitles, captions, typography, font, watermarks, signatures, logos. ` +
-        `16:9 widescreen landscape, pure visual artwork with zero text.`;
+      try {
+        const thumbRes = await AiPromptGeneratorService.generateThumbnailPrompt({
+          title: cleanTitle,
+          niche: projectNiche,
+          thumbnailText: selectedHook || undefined,
+          storySummary: visualFocus,
+          aspectRatio: '16:9'
+        });
+        prompt = thumbRes.prompt;
+      } catch (err: any) {
+        console.warn('[youtube.service] AI thumbnail prompt fallback:', err.message);
+        const art = PromptService.getArtDirection(projectNiche);
+        prompt = `${art.header} SCENE COMPOSITION: ${visualFocus || cleanTitle}. ART DIRECTION: ${art.styleDirectives.join('; ')}. 16:9 widescreen.`;
+      }
     }
 
     const rawOutputPath = path.join(project.projectPath, 'output', 'thumbnail_raw.png');

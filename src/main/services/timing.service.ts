@@ -6,9 +6,45 @@ const execFileAsync = util.promisify(execFile);
 
 export class TimingService {
   /**
-   * Measure audio duration in milliseconds using ffprobe
+   * Measure audio duration in milliseconds.
+   * For standard PCM WAV files, computes duration directly from the RIFF header in <1ms without subprocess overhead.
+   * Falls back to ffprobe for other formats or if header parsing fails.
    */
   static async getAudioDurationMs(filePath: string): Promise<number> {
+    if (!fs.existsSync(filePath)) return 0;
+
+    // Fast-path: parse RIFF WAV header directly in memory (<0.1ms, zero child process)
+    if (filePath.toLowerCase().endsWith('.wav')) {
+      try {
+        const fd = fs.openSync(filePath, 'r');
+        const buf = Buffer.alloc(1024);
+        const bytesRead = fs.readSync(fd, buf, 0, 1024, 0);
+        fs.closeSync(fd);
+
+        if (bytesRead >= 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE') {
+          let pos = 12;
+          let byteRate = 0;
+          let dataSize = 0;
+          while (pos < bytesRead - 8) {
+            const chunkId = buf.toString('ascii', pos, pos + 4);
+            const chunkSize = buf.readUInt32LE(pos + 4);
+            if (chunkId === 'fmt ') {
+              byteRate = buf.readUInt32LE(pos + 16);
+            } else if (chunkId === 'data') {
+              dataSize = chunkSize;
+              break;
+            }
+            pos += 8 + chunkSize;
+          }
+          if (byteRate > 0 && dataSize > 0) {
+            return Math.round((dataSize / byteRate) * 1000);
+          }
+        }
+      } catch {
+        // Fall back to ffprobe on any parsing error
+      }
+    }
+
     try {
       const { stdout } = await execFileAsync('ffprobe', [
         '-v', 'error',

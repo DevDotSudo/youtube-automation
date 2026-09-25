@@ -97,20 +97,31 @@ export function loadEnv(): void {
     }
   }
 
-  const isConfigured = Boolean(process.env.PIXAZO_API_KEY && process.env.PIXAZO_API_KEY.trim());
-  console.log(`[Env] Environment loaded. PIXAZO_API_KEY configured: ${isConfigured ? 'YES' : 'NO'}`);
+  const isPixazoSet = Boolean(process.env.PIXAZO_API_KEY && process.env.PIXAZO_API_KEY.trim());
+  const isAgnesSet = Boolean(process.env.AGNES_API_KEY && process.env.AGNES_API_KEY.trim());
+  const isGroqSet = Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim());
+  console.log(`[Env] Environment loaded. Pixazo: ${isPixazoSet ? 'YES' : 'NO'} | Agnes AI: ${isAgnesSet ? 'YES' : 'NO'} | Groq: ${isGroqSet ? 'YES' : 'NO'}`);
 }
 
 /**
  * Reloads environment files (useful when user updates .env.local at runtime)
  */
-export function reloadEnv(): { success: boolean; pixazoApiKeySet: boolean; model: string; concurrency: number } {
+export function reloadEnv(): {
+  success: boolean;
+  pixazoApiKeySet: boolean;
+  model: string;
+  concurrency: number;
+  agnesApiKeySet: boolean;
+  groqApiKeySet: boolean;
+} {
   loadEnv();
   return {
     success: true,
     pixazoApiKeySet: isPixazoConfigured(),
     model: getPixazoModel(),
-    concurrency: getPixazoConcurrency()
+    concurrency: getPixazoConcurrency(),
+    agnesApiKeySet: isAgnesConfigured(),
+    groqApiKeySet: isGroqConfigured()
   };
 }
 
@@ -127,48 +138,9 @@ export function savePixazoConfig(
   const cleanModel = model.trim() || 'flux-1-schnell';
   const cleanConcurrency = Math.max(1, Math.min(10, concurrency || 5));
 
-  let lines: string[] = [];
-  if (fs.existsSync(targetPath)) {
-    try {
-      lines = fs.readFileSync(targetPath, 'utf-8').split(/\r?\n/);
-    } catch {
-      lines = [];
-    }
-  }
-
-  let foundKey = false;
-  let foundModel = false;
-  let foundConcurrency = false;
-
-  const updatedLines = lines.map((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('PIXAZO_API_KEY=')) {
-      foundKey = true;
-      return `PIXAZO_API_KEY=${cleanKey}`;
-    }
-    if (trimmed.startsWith('PIXAZO_MODEL=')) {
-      foundModel = true;
-      return `PIXAZO_MODEL=${cleanModel}`;
-    }
-    if (trimmed.startsWith('PIXAZO_CONCURRENCY=')) {
-      foundConcurrency = true;
-      return `PIXAZO_CONCURRENCY=${cleanConcurrency}`;
-    }
-    return line;
-  });
-
-  if (!foundKey) {
-    updatedLines.push(`PIXAZO_API_KEY=${cleanKey}`);
-  }
-  if (!foundModel) {
-    updatedLines.push(`PIXAZO_MODEL=${cleanModel}`);
-  }
-  if (!foundConcurrency) {
-    updatedLines.push(`PIXAZO_CONCURRENCY=${cleanConcurrency}`);
-  }
-
-  fs.writeFileSync(targetPath, updatedLines.join('\n'), 'utf-8');
-  console.log(`[Env] Saved Pixazo config to ${targetPath}`);
+  updateEnvKeyValue(targetPath, 'PIXAZO_API_KEY', cleanKey);
+  updateEnvKeyValue(targetPath, 'PIXAZO_MODEL', cleanModel);
+  updateEnvKeyValue(targetPath, 'PIXAZO_CONCURRENCY', String(cleanConcurrency));
 
   process.env.PIXAZO_API_KEY = cleanKey;
   process.env.PIXAZO_MODEL = cleanModel;
@@ -180,6 +152,106 @@ export function savePixazoConfig(
     model: cleanModel,
     concurrency: cleanConcurrency
   };
+}
+
+export function getPrimaryPromptProvider(): 'agnes' | 'groq' {
+  const pref = (process.env.PRIMARY_PROMPT_PROVIDER || process.env.PROMPT_PROVIDER || '').trim().toLowerCase();
+  if (pref === 'groq') return 'groq';
+  if (pref === 'agnes') return 'agnes';
+  // If only Groq is configured, default to groq
+  if (isGroqConfigured() && !isAgnesConfigured()) return 'groq';
+  // Default to groq if both or only groq configured, otherwise agnes if configured
+  return 'groq';
+}
+
+export function getAiPromptConfig(): {
+  agnesApiKey: string;
+  agnesModel: string;
+  groqApiKey: string;
+  groqModel: string;
+  primaryProvider: 'agnes' | 'groq';
+} {
+  return {
+    agnesApiKey: getAgnesApiKey(),
+    agnesModel: getAgnesModel(),
+    groqApiKey: getGroqApiKey(),
+    groqModel: getGroqModel(),
+    primaryProvider: getPrimaryPromptProvider()
+  };
+}
+
+/**
+ * Saves Agnes AI and Groq configuration to .env.local and hot-reloads process.env
+ */
+export function saveAiPromptConfig(config: {
+  agnesApiKey?: string;
+  agnesModel?: string;
+  groqApiKey?: string;
+  groqModel?: string;
+  primaryProvider?: 'agnes' | 'groq';
+}): { success: boolean; agnesConfigured: boolean; groqConfigured: boolean; primaryProvider: 'agnes' | 'groq' } {
+  const targetPath = getPrimaryEnvLocalPath();
+
+  if (config.primaryProvider !== undefined) {
+    const clean = config.primaryProvider.toLowerCase() === 'agnes' ? 'agnes' : 'groq';
+    updateEnvKeyValue(targetPath, 'PRIMARY_PROMPT_PROVIDER', clean);
+    process.env.PRIMARY_PROMPT_PROVIDER = clean;
+  }
+  if (config.agnesApiKey !== undefined) {
+    const clean = config.agnesApiKey.trim();
+    updateEnvKeyValue(targetPath, 'AGNES_API_KEY', clean);
+    process.env.AGNES_API_KEY = clean;
+  }
+  if (config.agnesModel !== undefined) {
+    const clean = config.agnesModel.trim() || 'agnes-2.0-flash';
+    updateEnvKeyValue(targetPath, 'AGNES_MODEL', clean);
+    process.env.AGNES_MODEL = clean;
+  }
+  if (config.groqApiKey !== undefined) {
+    const clean = config.groqApiKey.trim();
+    updateEnvKeyValue(targetPath, 'GROQ_API_KEY', clean);
+    process.env.GROQ_API_KEY = clean;
+  }
+  if (config.groqModel !== undefined) {
+    const clean = config.groqModel.trim() || 'qwen/qwen3.8-27b';
+    updateEnvKeyValue(targetPath, 'GROQ_MODEL', clean);
+    process.env.GROQ_MODEL = clean;
+  }
+
+  return {
+    success: true,
+    agnesConfigured: isAgnesConfigured(),
+    groqConfigured: isGroqConfigured(),
+    primaryProvider: getPrimaryPromptProvider()
+  };
+}
+
+
+function updateEnvKeyValue(filePath: string, key: string, value: string): void {
+  let lines: string[] = [];
+  if (fs.existsSync(filePath)) {
+    try {
+      lines = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
+    } catch {
+      lines = [];
+    }
+  }
+
+  let found = false;
+  const updatedLines = lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(`${key}=`)) {
+      found = true;
+      return `${key}=${value}`;
+    }
+    return line;
+  });
+
+  if (!found) {
+    updatedLines.push(`${key}=${value}`);
+  }
+
+  fs.writeFileSync(filePath, updatedLines.join('\n'), 'utf-8');
 }
 
 /**
@@ -204,6 +276,7 @@ export function startEnvWatcher(): void {
   }
 }
 
+// Pixazo getters
 export function getPixazoApiKey(): string {
   return (process.env.PIXAZO_API_KEY || '').trim();
 }
@@ -220,4 +293,38 @@ export function getPixazoConcurrency(): number {
   const val = parseInt(process.env.PIXAZO_CONCURRENCY || '5', 10);
   if (isNaN(val) || val < 1) return 5;
   return Math.min(10, Math.max(1, val));
+}
+
+// Agnes AI getters (Primary Prompt Provider)
+export function getAgnesApiKey(): string {
+  return (process.env.AGNES_API_KEY || '').trim();
+}
+
+export function getAgnesModel(): string {
+  return (process.env.AGNES_MODEL || 'agnes-2.0-flash').trim();
+}
+
+export function getAgnesBaseUrl(): string {
+  return (process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com/v1').trim();
+}
+
+export function isAgnesConfigured(): boolean {
+  return getAgnesApiKey().length > 0;
+}
+
+// Groq getters (Fallback Prompt Provider)
+export function getGroqApiKey(): string {
+  return (process.env.GROQ_API_KEY || '').trim();
+}
+
+export function getGroqModel(): string {
+  return (process.env.GROQ_MODEL || 'qwen/qwen3.8-27b').trim();
+}
+
+export function getGroqBaseUrl(): string {
+  return (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').trim();
+}
+
+export function isGroqConfigured(): boolean {
+  return getGroqApiKey().length > 0;
 }

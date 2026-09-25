@@ -1,4 +1,9 @@
-﻿import { AutoCaptionService } from '../services/auto-caption.service';
+import { AiPromptGeneratorService } from '../services/ai-prompt-generator.service';
+import { saveAiPromptConfig, getAiPromptConfig } from '../env';
+
+import { PromptService } from '../services/prompt.service';
+import { StockMediaService } from '../services/stock-media.service';
+﻿import { TimingService } from '../services/timing.service';
 import { VisualBeatPlannerService } from '../services/visual-beat-planner.service';
 import { VisualBeatRepository } from '../database/repositories/visual-beat.repository';
 import { VisualBeat, CaptionStyleConfig, VideoExportOptions } from '../../shared/types';
@@ -89,73 +94,76 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     if (!project) throw new Error('Project not found: ' + projectId);
     const scenes = SceneRepository.listByProjectId(projectId);
     const masterVoicePath = path.join(project.projectPath, 'audio', 'master_voice.wav');
-    if (!fs.existsSync(masterVoicePath)) {
-      throw new Error('Master audio not found: ' + masterVoicePath);
-    }
 
-    const alignResult = await AutoCaptionService.alignScenesToAudio(
-      masterVoicePath,
-      scenes,
-      project.projectPath
-    );
+    let cumulativeMs = 0;
+    const sceneWavs: string[] = [];
 
-    const subDir = path.join(project.projectPath, 'subtitles');
-    fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(subDir, 'alignment.json'), JSON.stringify(alignResult, null, 2), 'utf8');
-
+    // Measure exact scene audio durations for zero-drift alignment
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const aligned = alignResult.scenes.find((as) => as.id === scene.id || as.sceneIndex === scene.sceneIndex);
-      const startMs = aligned ? aligned.startMs : (i === 0 ? 0 : scenes[i - 1].endMs);
-      const endMs = aligned ? aligned.endMs : (startMs + 4000);
-      const finalDurationMs = Math.max(1000, endMs - startMs);
+      let sceneDur = scene.audioDurationMs;
+      if (scene.audioPath && fs.existsSync(scene.audioPath)) {
+        try {
+          sceneDur = await TimingService.getAudioDurationMs(scene.audioPath);
+        } catch {}
+      }
+      if (!sceneDur || sceneDur < 500) {
+        sceneDur = scene.durationMs || 4000;
+      }
+
+      const startMs = cumulativeMs;
+      const endMs = cumulativeMs + sceneDur;
+      cumulativeMs = endMs;
 
       SceneRepository.update(scene.id, {
         startMs,
         endMs,
-        durationMs: finalDurationMs,
-        audioPath: masterVoicePath,
-        audioDurationMs: finalDurationMs,
+        durationMs: sceneDur,
+        audioDurationMs: sceneDur,
         audioStatus: AssetStatus.READY,
-        captionText: scene.scriptText,
-        captionEnabled: true,
-        words: aligned?.words || [],
-        speechStartMs: aligned?.speechStartMs ?? startMs,
-        speechEndMs: aligned?.speechEndMs ?? endMs
+        captionEnabled: false
       });
 
       const currentBeats = VisualBeatRepository.listBySceneId(scene.id);
       if (currentBeats.length > 0) {
+        const hasCustom = currentBeats.some((b) => b.isCustomPrompt) || Boolean(scene.imagePrompt);
+        const customPromptText = currentBeats.find((b) => b.isCustomPrompt)?.imagePrompt || scene.imagePrompt;
+
         const planned = VisualBeatPlannerService.planSceneBeats({
           id: scene.id,
           projectId,
           sceneIndex: scene.sceneIndex,
           scriptText: scene.scriptText,
-          durationMs: finalDurationMs,
-          startMs
-        });
+          durationMs: sceneDur,
+          startMs,
+          aspectRatio: project.aspectRatio,
+          customPrompt: hasCustom ? customPromptText : undefined
+        }, undefined, project.visualNiche, project.aspectRatio);
+
         for (let bIdx = 0; bIdx < planned.length; bIdx++) {
           if (bIdx < currentBeats.length) {
             planned[bIdx].imagePath = currentBeats[bIdx].imagePath || planned[bIdx].imagePath;
             planned[bIdx].generationStatus = currentBeats[bIdx].generationStatus;
             planned[bIdx].motion = currentBeats[bIdx].motion;
             planned[bIdx].transition = currentBeats[bIdx].transition;
+            if (currentBeats[bIdx].isCustomPrompt) {
+              planned[bIdx].imagePrompt = currentBeats[bIdx].imagePrompt;
+              planned[bIdx].isCustomPrompt = true;
+            }
           }
         }
         VisualBeatRepository.deleteBySceneId(scene.id);
         VisualBeatRepository.createMany(planned);
       }
+      if (scene.audioPath && fs.existsSync(scene.audioPath)) {
+        sceneWavs.push(scene.audioPath);
+      }
     }
 
-    ProjectRepository.update(projectId, {
-      durationMs: alignResult.totalDurationMs
-    });
-
-    try {
-      RenderService.generateAss(projectId);
-    } catch (e) {
-      console.warn('[IPC projects:autoCaption] generateAss warning:', e);
+    if (sceneWavs.length > 0) {
+      await TTSService.buildMasterContinuousVoice(sceneWavs, masterVoicePath);
     }
+    ProjectRepository.update(projectId, { durationMs: cumulativeMs });
 
     const updatedScenes = SceneRepository.listByProjectId(projectId);
     const updatedBeats = VisualBeatRepository.listByProjectId(projectId);
@@ -170,7 +178,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       project: ProjectRepository.getById(projectId),
       scenes: updatedScenes,
       beats: updatedBeats,
-      totalDurationMs: alignResult.totalDurationMs
+      totalDurationMs: cumulativeMs
     };
   });
 
@@ -187,52 +195,89 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       }
     }
 
-    const masterVoicePath = path.join(project.projectPath, 'audio', 'master_voice.wav');
+    const projectPath = project.projectPath;
+    const masterVoicePath = path.join(projectPath, 'audio', 'master_voice.wav');
     const voiceModel = newVoiceId || project.voiceId || 'bm_george';
 
     for (const sc of scenes) {
       SceneRepository.update(sc.id, { audioStatus: AssetStatus.GENERATING });
     }
 
-    const fullScript = scenes.map((s) => s.scriptText.trim()).filter(Boolean).join(' ');
-    await TTSService.generateUncutContinuousNarration(fullScript, voiceModel, masterVoicePath);
+    // 1. Synthesize scene audio concurrently (pool of up to 3 parallel workers)
+    const CONCURRENCY = Math.min(3, scenes.length);
+    const sceneAudioResults: { finalWavPath: string; durationMs: number }[] = new Array(scenes.length);
+    let nextSceneIdx = 0;
 
-    const alignResult = await AutoCaptionService.alignScenesToAudio(masterVoicePath, scenes, project.projectPath);
+    async function audioWorker() {
+      while (nextSceneIdx < scenes.length) {
+        const idx = nextSceneIdx++;
+        const scene = scenes[idx];
+        const folderNum = String(scene.sceneIndex).padStart(4, '0');
+        const sceneDir = path.join(projectPath, 'scenes', folderNum);
 
+        sceneAudioResults[idx] = await TTSService.generateSceneNarration(
+          scene.scriptText,
+          voiceModel,
+          sceneDir,
+          undefined,
+          scene.voiceSpeed || 1.0
+        );
+      }
+    }
+
+    const workers = Array.from({ length: CONCURRENCY }, () => audioWorker());
+    await Promise.all(workers);
+
+    let cumulativeStartMs = 0;
+    const sceneWavPaths: string[] = [];
+
+    // 2. Align timeline and visual beats sequentially in exact order
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const aligned = alignResult.scenes.find((as) => as.id === scene.id || as.sceneIndex === scene.sceneIndex);
-      const startMs = aligned ? aligned.startMs : (i === 0 ? 0 : scenes[i - 1].endMs);
-      const endMs = aligned ? aligned.endMs : (startMs + 4000);
-      const finalDurationMs = Math.max(1000, endMs - startMs);
+      const { finalWavPath, durationMs } = sceneAudioResults[i];
+      sceneWavPaths.push(finalWavPath);
+
+      const startMs = cumulativeStartMs;
+      const endMs = cumulativeStartMs + durationMs;
+      cumulativeStartMs = endMs;
 
       SceneRepository.update(scene.id, {
         startMs,
         endMs,
-        durationMs: finalDurationMs,
-        audioPath: masterVoicePath,
-        audioDurationMs: finalDurationMs,
+        durationMs,
+        audioPath: finalWavPath,
+        audioDurationMs: durationMs,
         audioStatus: AssetStatus.READY,
         captionText: scene.scriptText,
-        captionEnabled: true
+        captionEnabled: false
       });
 
       const currentBeats = VisualBeatRepository.listBySceneId(scene.id);
       if (currentBeats.length > 0) {
+        const hasCustom = currentBeats.some((b) => b.isCustomPrompt) || Boolean(scene.imagePrompt);
+        const customPromptText = currentBeats.find((b) => b.isCustomPrompt)?.imagePrompt || scene.imagePrompt;
+
         const planned = VisualBeatPlannerService.planSceneBeats({
           id: scene.id,
           projectId,
           sceneIndex: scene.sceneIndex,
           scriptText: scene.scriptText,
-          durationMs: finalDurationMs,
-          startMs
-        });
+          durationMs,
+          startMs,
+          aspectRatio: project.aspectRatio,
+          customPrompt: hasCustom ? customPromptText : undefined
+        }, undefined, project.visualNiche, project.aspectRatio);
+
         for (let bIdx = 0; bIdx < planned.length; bIdx++) {
           if (bIdx < currentBeats.length) {
             planned[bIdx].imagePath = currentBeats[bIdx].imagePath || planned[bIdx].imagePath;
             planned[bIdx].generationStatus = currentBeats[bIdx].generationStatus;
             planned[bIdx].motion = currentBeats[bIdx].motion;
             planned[bIdx].transition = currentBeats[bIdx].transition;
+            if (currentBeats[bIdx].isCustomPrompt) {
+              planned[bIdx].imagePrompt = currentBeats[bIdx].imagePrompt;
+              planned[bIdx].isCustomPrompt = true;
+            }
           }
         }
         VisualBeatRepository.deleteBySceneId(scene.id);
@@ -240,9 +285,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       }
     }
 
-    ProjectRepository.update(projectId, { durationMs: alignResult.totalDurationMs });
-
-    try { RenderService.generateAss(projectId); } catch {}
+    // Build seamless continuous master voice from exact scene audio files
+    await TTSService.buildMasterContinuousVoice(sceneWavPaths, masterVoicePath);
+    ProjectRepository.update(projectId, { durationMs: cumulativeStartMs });
 
     const updatedScenes = SceneRepository.listByProjectId(projectId);
     const updatedBeats = VisualBeatRepository.listByProjectId(projectId);
@@ -288,8 +333,16 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     const imgPath = path.join(project.projectPath, 'scenes', folderNum, 'image.png');
 
     SceneRepository.update(sceneId, { imageStatus: AssetStatus.GENERATING });
+    const freshPrompt = PromptService.buildPrompt(
+      scene.scriptText,
+      undefined,
+      'WIDE_SCENE',
+      undefined,
+      project.visualNiche,
+      project.aspectRatio
+    );
     try {
-      await ImageService.generateWithRetry(scene.imagePrompt, imgPath);
+      await ImageService.generateWithRetry(freshPrompt, imgPath);
       SceneRepository.update(sceneId, {
         imagePath: imgPath,
         imageStatus: AssetStatus.READY,
@@ -330,10 +383,65 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       SceneRepository.update(sceneId, {
         audioPath: finalWavPath,
         audioDurationMs: durationMs,
+        durationMs,
         audioStatus: AssetStatus.READY,
         approvalStatus: needsReview ? ApprovalStatus.NEEDS_REVIEW : scene.approvalStatus,
-        errorMessage: undefined
+        errorMessage: undefined,
+        captionEnabled: false
       });
+
+      // Re-align beats for this scene with exact durationMs
+      const currentBeats = VisualBeatRepository.listBySceneId(scene.id);
+      if (currentBeats.length > 0) {
+        const planned = VisualBeatPlannerService.planSceneBeats({
+          id: scene.id,
+          projectId: scene.projectId,
+          sceneIndex: scene.sceneIndex,
+          scriptText: scene.scriptText,
+          durationMs,
+          startMs: scene.startMs,
+          aspectRatio: project.aspectRatio
+        }, undefined, project.visualNiche, project.aspectRatio);
+
+        for (let bIdx = 0; bIdx < planned.length; bIdx++) {
+          if (bIdx < currentBeats.length) {
+            planned[bIdx].imagePath = currentBeats[bIdx].imagePath || planned[bIdx].imagePath;
+            planned[bIdx].generationStatus = currentBeats[bIdx].generationStatus;
+            planned[bIdx].motion = currentBeats[bIdx].motion;
+            planned[bIdx].transition = currentBeats[bIdx].transition;
+          }
+        }
+        VisualBeatRepository.deleteBySceneId(scene.id);
+        VisualBeatRepository.createMany(planned);
+      }
+
+      // Re-sequence all scenes in the project sequentially
+      const allScenes = SceneRepository.listByProjectId(project.id);
+      let cumulativeMs = 0;
+      const wavPaths: string[] = [];
+      for (const sc of allScenes) {
+        const scDur = sc.audioDurationMs || sc.durationMs || 4000;
+        const sStart = cumulativeMs;
+        const sEnd = sStart + scDur;
+        cumulativeMs = sEnd;
+        SceneRepository.update(sc.id, { startMs: sStart, endMs: sEnd, durationMs: scDur });
+        if (sc.audioPath && fs.existsSync(sc.audioPath)) {
+          wavPaths.push(sc.audioPath);
+        }
+      }
+
+      // Rebuild master_voice.wav from all valid scene audio files
+      const masterVoicePath = path.join(project.projectPath, 'audio', 'master_voice.wav');
+      if (wavPaths.length > 0) {
+        await TTSService.buildMasterContinuousVoice(wavPaths, masterVoicePath);
+      }
+      ProjectRepository.update(project.id, { durationMs: cumulativeMs });
+
+      const updated = SceneRepository.getById(sceneId)!;
+      mainWindow.webContents.send('scene:updated', updated);
+      const updatedBeats = VisualBeatRepository.listByProjectId(project.id);
+      for (const bt of updatedBeats) { mainWindow.webContents.send('beat:updated', bt); }
+      return updated;
     } catch (err: any) {
       SceneRepository.update(sceneId, {
         audioStatus: AssetStatus.FAILED,
@@ -341,11 +449,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       });
       throw err;
     }
-
-    const updated = SceneRepository.getById(sceneId)!;
-    mainWindow.webContents.send('scene:updated', updated);
-    return updated;
   });
+
+
 
 
   ipcMain.handle('scenes:replaceImage', async (_event, sceneId: string, filePath: string) => {
@@ -501,13 +607,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       workspaceExists: fs.existsSync(settings.workspacePath),
       ffmpeg: true,
       ffprobe: true,
-      kokoroService: voiceOk,
       voiceService: voiceOk,
       voiceEngine: 'Microsoft Edge Neural TTS (Cloud)',
       pixazoService: pixazoConfigured,
       pixazoConfigured,
       pixazoModel,
-      parrotAiService: pixazoConfigured,
       imageEngine: 'Pixazo AI Gateway (5x Parallel)',
       imageConcurrency: concurrency,
       browserInstalled: true,
@@ -575,7 +679,29 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       beat.imagePath = path.join(beatsDir, `beat_${beatNum}.png`);
     }
 
-    const promptToUse = customPrompt || beat.imagePrompt;
+    let promptToUse = customPrompt?.trim();
+    if (!promptToUse) {
+      try {
+        const aiRes = await AiPromptGeneratorService.generatePrompt({
+          scriptLine: scene.scriptText,
+          niche: project.visualNiche,
+          shotType: beat.shotType,
+          aspectRatio: project.aspectRatio,
+          characterLock: project.characterLock
+        });
+        promptToUse = aiRes.prompt;
+      } catch (err: any) {
+        console.warn('[beats:regenerateImage] AI prompt fallback:', err.message);
+        promptToUse = PromptService.buildPrompt(
+          scene.scriptText,
+          beat.visualConcept,
+          beat.shotType,
+          beat.environmentDescription,
+          project.visualNiche,
+          project.aspectRatio
+        );
+      }
+    }
     VisualBeatRepository.update(beatId, {
       generationStatus: 'GENERATING',
       imagePrompt: promptToUse
@@ -798,12 +924,135 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     return reloadEnv();
   });
 
-  // Backwards compatibility aliases for parrotai:*
-  ipcMain.handle('parrotai:checkHealth', handleCheckHealth);
-  ipcMain.handle('parrotai:generateTestImage', handleGenerateTestImage);
-  ipcMain.handle('parrotai:getHistory', handleGetHistory);
-  ipcMain.handle('parrotai:clearHistory', handleClearHistory);
-  ipcMain.handle('parrotai:openFolder', handleOpenFolder);
-}
+  // Stock Media & Pinterest B-Roll Studio (VUZA Open Source Integration)
+  ipcMain.handle('stockMedia:search', async (_event, options) => {
+    return StockMediaService.searchMedia(options);
+  });
 
+  ipcMain.handle('stockMedia:downloadToBeat', async (_event, item, beatId: string, projectId: string) => {
+    const project = ProjectRepository.getById(projectId);
+    if (!project) throw new Error('Project not found');
+    const outputFolder = project.projectPath
+      ? path.join(project.projectPath, 'assets')
+      : path.join(app.getPath('userData'), 'projects', projectId, 'assets');
+    const result = await StockMediaService.downloadMedia(item, outputFolder, `beat_${beatId}`);
+    if (result.localPath) {
+      VisualBeatRepository.update(beatId, {
+        imagePath: result.localPath,
+        generationStatus: 'READY' as any
+      });
+    }
+    return { success: true, localPath: result.localPath, isVideo: result.isVideo };
+  });
+
+  ipcMain.handle('stockMedia:generateViralMetadata', async (_event, script: string, projectName: string) => {
+    return StockMediaService.generateViralMetadata(script, projectName);
+  });
+
+  ipcMain.handle('stockMedia:generateCharacterProfile', async (_event, script: string) => {
+    return StockMediaService.generateCharacterProfile(script);
+  });
+
+  ipcMain.handle('stockMedia:saveClipLocally', async (_event, options: {
+    url: string;
+    title: string;
+    filename?: string;
+    targetDirectory?: string;
+    chooseLocation?: boolean;
+    quality?: string;
+  }) => {
+    try {
+      const defaultFolder = options.targetDirectory && fs.existsSync(options.targetDirectory)
+        ? options.targetDirectory
+        : StockMediaService.getDefaultClipsFolder();
+
+      const rawTitle = (options.filename || options.title || 'stock_clip')
+        .toLowerCase()
+        .replace(/[^a-z0-9_\-\s]/g, '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .slice(0, 50);
+
+      let targetFilePath = '';
+
+      if (options.chooseLocation) {
+        const result = await dialog.showSaveDialog(mainWindow, {
+          title: 'Save Stock Clip',
+          defaultPath: path.join(defaultFolder, `${rawTitle || 'stock_clip'}.mp4`),
+          filters: [{ name: 'MP4 Video', extensions: ['mp4'] }]
+        });
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: 'Save canceled' };
+        }
+        targetFilePath = result.filePath;
+      } else {
+        targetFilePath = path.join(defaultFolder, `${rawTitle || 'clip'}_${Date.now()}.mp4`);
+      }
+
+      await StockMediaService.downloadClipUrl(options.url, targetFilePath);
+
+      if (fs.existsSync(targetFilePath)) {
+        const stat = fs.statSync(targetFilePath);
+        return {
+          success: true,
+          filePath: targetFilePath,
+          fileSize: stat.size
+        };
+      }
+      return { success: false, error: 'File was not written' };
+    } catch (err: any) {
+      console.error('[stockMedia:saveClipLocally] Error:', err);
+      return { success: false, error: err.message || 'Download failed' };
+    }
+  });
+
+  ipcMain.handle('stockMedia:selectClipsFolder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Destination Folder for Stock Clips',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true };
+    }
+    return { canceled: false, folderPath: result.filePaths[0] };
+  });
+
+  ipcMain.handle('stockMedia:getClipsFolder', async () => {
+    return StockMediaService.getDefaultClipsFolder();
+  });
+
+  ipcMain.handle('stockMedia:getDownloadedClips', async (_event, customFolder?: string) => {
+    return StockMediaService.getDownloadedClips(customFolder);
+  });
+
+  ipcMain.handle('stockMedia:deleteDownloadedClip', async (_event, filePath: string) => {
+    return StockMediaService.deleteDownloadedClip(filePath);
+  });
+
+  // ==============================================================================
+  // AI Prompt Generation (Agnes AI & Groq Fallback with Circuit Breaker)
+  // ==============================================================================
+  ipcMain.handle('aiPrompts:getConfig', async () => {
+    return getAiPromptConfig();
+  });
+
+  ipcMain.handle('aiPrompts:checkHealth', async () => {
+    return AiPromptGeneratorService.checkHealth();
+  });
+
+  ipcMain.handle('aiPrompts:generatePrompt', async (_event, params: any) => {
+    return AiPromptGeneratorService.generatePrompt(params);
+  });
+
+  ipcMain.handle('aiPrompts:saveConfig', async (_event, config: any) => {
+    AiPromptGeneratorService.resetCircuitBreaker();
+    return saveAiPromptConfig(config);
+  });
+
+  ipcMain.handle('aiPrompts:resetCircuitBreaker', async () => {
+    AiPromptGeneratorService.resetCircuitBreaker();
+    return { success: true };
+  });
+
+}
 

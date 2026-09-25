@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../stores/project.store';
 import { ApprovalStatus, VisualShotType } from '../../../shared/enums';
-import { EDGE_NEURAL_VOICES } from '../../../shared/constants';
+import { EDGE_NEURAL_VOICES, IN_ANIMATION_OPTIONS, OUT_ANIMATION_OPTIONS } from '../../../shared/constants';
 
 const SHOT_TYPE_OPTIONS: { value: VisualShotType; label: string; icon: string }[] = [
   { value: VisualShotType.WIDE_SCENE, label: 'Wide Scene', icon: 'crop_16_9' },
@@ -34,8 +34,7 @@ export const ReviewPage: React.FC = () => {
     updateSceneInList,
     updateBeatInList,
     setActiveSceneId,
-    setActiveBeatId,
-    isLoading
+    setActiveBeatId
   } = useProjectStore();
 
   const [filter, setFilter] = useState<'all' | 'unreviewed' | 'approved'>('all');
@@ -257,10 +256,10 @@ export const ReviewPage: React.FC = () => {
       setAutoEditStep('🎬 AI Master Animator: Analyzing 3-act narrative cadence & tone...');
       await new Promise(r => setTimeout(r, 300));
 
-      setAutoEditStep('🎥 Choreographing multi-axis camera motion, video effects & transitions...');
+      setAutoEditStep('🎥 Choreographing multi-axis camera motion, in/out animations, video effects & transitions...');
       await autoEdit(currentProject.id);
 
-      setAutoEditStep('✍️ Generating kinetic ASS subtitles with power-word highlights...');
+      setAutoEditStep('🎙️ Calibrating voice-to-visual cadence & exact scene synchronization...');
       await new Promise(r => setTimeout(r, 350));
 
       setAutoEditStep('🎵 Harmonizing soundtrack & ducking audio curves (-18dB)...');
@@ -276,7 +275,7 @@ export const ReviewPage: React.FC = () => {
     }
   };
 
-  if (isLoading || !currentProject) {
+  if (!currentProject) {
     return (
       <div className="p-16 flex flex-col items-center justify-center text-[#918FA1] gap-3">
         <span className="material-symbols-outlined text-[36px] animate-spin text-[#8781FF]">progress_activity</span>
@@ -514,12 +513,25 @@ export const ReviewPage: React.FC = () => {
                           >
                             <div className="w-full h-20 bg-[#16181D] rounded-lg overflow-hidden relative">
                               {beat.generationStatus === 'READY' && beat.imagePath ? (
-                                <img
-                                  key={`rev-small-${beat.id}`}
-                                  src={getMediaUrl(beat.imagePath, true)}
-                                  alt={`Beat ${bIdx + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
+                                beat.imagePath.toLowerCase().match(/\.(mp4|webm|mov|mkv)$/) ? (
+                                  <video
+                                    key={`rev-small-vid-${beat.id}`}
+                                    src={getMediaUrl(beat.imagePath)}
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    autoPlay={isBeatActive}
+                                    loop={isBeatActive}
+                                    className="w-full h-full object-cover pointer-events-none"
+                                  />
+                                ) : (
+                                  <img
+                                    key={`rev-small-${beat.id}`}
+                                    src={getMediaUrl(beat.imagePath)}
+                                    alt={`Beat ${bIdx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )
                               ) : beat.generationStatus === 'GENERATING' ? (
                                 <div className="w-full h-full flex items-center justify-center text-[#8781FF]">
                                   <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
@@ -539,11 +551,20 @@ export const ReviewPage: React.FC = () => {
 
                             <div className="flex items-center justify-between text-[10px] font-mono text-[#918FA1]">
                               <span className="truncate max-w-[85px]">{beat.shotType}</span>
-                              <span className="text-[#4EDEA3]">{beat.motion}</span>
+                              <span className="text-[#4EDEA3] font-semibold">{beat.motion}</span>
                             </div>
 
-                            <p className="text-[10px] text-[#C7C4D8] line-clamp-1">
-                              {beat.visualConcept}
+                            <div className="flex items-center gap-1 text-[9px] font-mono">
+                              <span className="px-1 py-0.5 rounded bg-[#8781FF]/15 text-[#8781FF] border border-[#8781FF]/30 truncate max-w-[65px]" title={`In: ${beat.inAnimation || 'FADE_IN'}`}>
+                                IN: {beat.inAnimation || 'FADE_IN'}
+                              </span>
+                              <span className="px-1 py-0.5 rounded bg-[#FFB95F]/15 text-[#FFB95F] border border-[#FFB95F]/30 truncate max-w-[65px]" title={`Out: ${beat.outAnimation || 'FADE_OUT'}`}>
+                                OUT: {beat.outAnimation || 'FADE_OUT'}
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] text-[#C7C4D8] line-clamp-1 italic" title={beat.scriptText || beat.visualConcept}>
+                              &quot;{beat.scriptText || beat.visualConcept}&quot;
                             </p>
                           </div>
                         );
@@ -589,15 +610,34 @@ export const ReviewPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Large Image Preview Canvas */}
-              <div className="w-full aspect-video bg-[#0C0E11] rounded-2xl border border-white/[0.08] overflow-hidden relative shadow-2xl group">
+              {/* Large Image / Video Preview Canvas */}
+              <div
+                className={`${
+                  currentProject?.aspectRatio === '9:16' || currentProject?.platform === 'FACEBOOK'
+                    ? 'max-w-xs mx-auto aspect-[9/16]'
+                    : 'w-full aspect-video'
+                } bg-[#0C0E11] rounded-2xl border border-white/[0.08] overflow-hidden relative shadow-2xl group flex items-center justify-center`}
+              >
                 {activeBeat.generationStatus === 'READY' && activeBeat.imagePath ? (
-                  <img
-                    key={`rev-large-${activeBeat.id}`}
-                    src={getMediaUrl(activeBeat.imagePath, true)}
-                    alt="Active Beat"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                  activeBeat.imagePath.toLowerCase().match(/\.(mp4|webm|mov|mkv)$/) ? (
+                    <video
+                      key={`rev-large-vid-${activeBeat.id}`}
+                      src={getMediaUrl(activeBeat.imagePath)}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      key={`rev-large-${activeBeat.id}`}
+                      src={getMediaUrl(activeBeat.imagePath)}
+                      alt="Active Beat"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )
                 ) : activeBeat.generationStatus === 'GENERATING' ? (
                   <div className="w-full h-full flex flex-col items-center justify-center text-[#8781FF] gap-2.5">
                     <span className="material-symbols-outlined text-[36px] animate-spin text-[#C4C0FF]">progress_activity</span>
@@ -685,6 +725,38 @@ export const ReviewPage: React.FC = () => {
                   </select>
                 </div>
 
+                {/* In Animation Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8781FF] font-semibold">IN ANIMATION</label>
+                  <select
+                    value={activeBeat.inAnimation || 'NONE'}
+                    onChange={(e) => updateBeat(activeBeat.id, { inAnimation: e.target.value as any })}
+                    className="bg-[#0C0E11] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-[#E2E2E6] focus:outline-none focus:border-[#8781FF] cursor-pointer"
+                  >
+                    {IN_ANIMATION_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Out Animation Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#FFB95F] font-semibold">OUT ANIMATION</label>
+                  <select
+                    value={activeBeat.outAnimation || 'NONE'}
+                    onChange={(e) => updateBeat(activeBeat.id, { outAnimation: e.target.value as any })}
+                    className="bg-[#0C0E11] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-[#E2E2E6] focus:outline-none focus:border-[#FFB95F] cursor-pointer"
+                  >
+                    {OUT_ANIMATION_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Transition Selector */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-mono uppercase tracking-wider text-[#918FA1]">TRANSITION</label>
@@ -742,6 +814,20 @@ export const ReviewPage: React.FC = () => {
 
               {/* Concept & Prompt Editor */}
               <div className="flex flex-col gap-4">
+                {/* Spoken Script Clause for this 3-6s Beat */}
+                <div className="flex flex-col gap-1.5 bg-[#0C0E11] p-3 rounded-xl border border-[#4EDEA3]/25">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-[#4EDEA3] font-semibold flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[13px]">mic</span>
+                      SPOKEN SCRIPT SEGMENT ({(activeBeat.durationMs / 1000).toFixed(1)}s)
+                    </label>
+                    <span className="text-[10px] font-mono text-[#7D7A8B]">3-6s Pacing</span>
+                  </div>
+                  <p className="text-xs text-[#E2E2E6] font-sans leading-relaxed italic">
+                    &quot;{activeBeat.scriptText || activeBeat.visualConcept}&quot;
+                  </p>
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-mono uppercase tracking-wider text-[#918FA1]">VISUAL CONCEPT</label>
                   <input

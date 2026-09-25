@@ -128,6 +128,7 @@ export function initDatabase(): Database.Database {
         transition_duration_ms INTEGER NOT NULL DEFAULT 0,
         keyword TEXT,
         keyword_enabled INTEGER NOT NULL DEFAULT 0,
+        script_text TEXT,
         FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
         UNIQUE(scene_id, beat_index)
@@ -152,6 +153,14 @@ export function initDatabase(): Database.Database {
   try { db.exec("ALTER TABLE scenes ADD COLUMN video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE projects ADD COLUMN default_video_effect TEXT NOT NULL DEFAULT 'none'"); } catch {}
   try { db.exec("ALTER TABLE projects ADD COLUMN visual_niche TEXT DEFAULT 'stoic_philosophy'"); } catch {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN platform TEXT DEFAULT 'YOUTUBE'"); } catch {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN aspect_ratio TEXT DEFAULT '16:9'"); } catch {}
+  try { db.exec("ALTER TABLE visual_beats ADD COLUMN in_animation TEXT NOT NULL DEFAULT 'NONE'"); } catch {}
+  try { db.exec("ALTER TABLE visual_beats ADD COLUMN out_animation TEXT NOT NULL DEFAULT 'NONE'"); } catch {}
+  try { db.exec("ALTER TABLE visual_beats ADD COLUMN in_animation_duration_ms INTEGER NOT NULL DEFAULT 400"); } catch {}
+  try { db.exec("ALTER TABLE visual_beats ADD COLUMN out_animation_duration_ms INTEGER NOT NULL DEFAULT 400"); } catch {}
+  try { db.exec("ALTER TABLE visual_beats ADD COLUMN script_text TEXT"); } catch {}
+  try { db.exec("ALTER TABLE projects ADD COLUMN character_lock TEXT"); } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_scenes_project_id ON scenes(project_id)"); } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_visual_beats_project_id ON visual_beats(project_id)"); } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_visual_beats_scene_id ON visual_beats(scene_id)"); } catch {}

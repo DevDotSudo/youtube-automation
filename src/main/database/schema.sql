@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS visual_beats (
   transition_duration_ms INTEGER NOT NULL DEFAULT 0,
   keyword TEXT,
   keyword_enabled INTEGER NOT NULL DEFAULT 0,
+  script_text TEXT,
   FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   UNIQUE(scene_id, beat_index)

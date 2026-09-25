@@ -35,6 +35,32 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
   const [selectedHook, setSelectedHook] = useState('');
   const [selectedSubtitle, setSelectedSubtitle] = useState('');
   const [isSavingThumb, setIsSavingThumb] = useState(false);
+  const [isGeneratingViral, setIsGeneratingViral] = useState(false);
+
+  const handleGenerateViralPack = async () => {
+    if (!window.docuforge?.stockMedia || !data) return;
+    setIsGeneratingViral(true);
+    try {
+      const fullScript = (data as any).scriptText || data.descriptionText || '';
+      const viral = await window.docuforge.stockMedia.generateViralMetadata(fullScript, selectedTitle || 'Master Story');
+      if (viral) {
+        setData((prev) => prev ? {
+          ...prev,
+          titles: Array.from(new Set([...(viral.titles || []), ...(prev.titles || [])])),
+          descriptionText: viral.description || prev.descriptionText,
+          tagsText: viral.hashtags ? viral.hashtags.join(', ') : prev.tagsText,
+          thumbnailPrompt: viral.thumbnailPrompt || prev.thumbnailPrompt
+        } : null);
+        if (viral.titles && viral.titles.length > 0) {
+          setSelectedTitle(viral.titles[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate viral pack:', err);
+    } finally {
+      setIsGeneratingViral(false);
+    }
+  };
   const [thumbSavedSuccess, setThumbSavedSuccess] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -141,7 +167,7 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
     };
 
     if (rawThumbnailPath) {
-      img.src = getMediaUrl(rawThumbnailPath, true);
+      img.src = getMediaUrl(rawThumbnailPath);
       img.onload = drawCleanCanvas;
       if (img.complete) {
         drawCleanCanvas();
@@ -222,12 +248,23 @@ export const YouTubeExportModal: React.FC<Props> = ({ projectId, onClose }) => {
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg hover:bg-[#1E2023] flex items-center justify-center text-[#918FA1] hover:text-[#E2E2E6] transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateViralPack}
+              disabled={isGeneratingViral}
+              className="h-8 px-3 rounded-lg bg-gradient-to-r from-[#FF4D4D] to-[#FF8781] hover:opacity-95 text-white font-bold text-xs shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
+              title="Auto-Generate High-CTR Titles, Description, Tags & Midjourney Prompt using VUZA Viral Formula"
+            >
+              <span className="material-symbols-outlined text-[16px] animate-pulse">auto_awesome</span>
+              <span>{isGeneratingViral ? 'Optimizing...' : '⚡ Viral AI Pack'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg hover:bg-[#1E2023] flex items-center justify-center text-[#918FA1] hover:text-[#E2E2E6] transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}

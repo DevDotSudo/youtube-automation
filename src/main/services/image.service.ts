@@ -31,38 +31,12 @@ export class ImageService {
     return PromptService.buildPrompt(sceneText || '', concept, 'WIDE_SCENE', undefined, visualNiche);
   }
 
-    /**
-   * Sanitizes any prompt to guarantee 100% clean, textless image output
-   * with zero text overlay, no titles, and no embedded words.
+  /**
+   * Cleans and trims the prompt without injecting unwanted negative tokens,
+   * preserving whatever style, text overlay, or descriptors the user provided.
    */
   static sanitizePromptForNoText(rawPrompt: string): string {
-    let p = (rawPrompt || '').trim();
-    // Strip any legacy in-image text instructions
-    p = p.replace(/IN-IMAGE TYPOGRAPHY[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
-    p = p.replace(/IN-IMAGE TEXT SPECIFICATION[\s\S]*?(?=(SCENE|ART DIRECTION|STRICT|$))/gi, '');
-    p = p.replace(/Prominently and artistically render the video title text[^\n.]*[.\n]?/gi, '');
-    p = p.replace(/STORY SCENE CONTEXT:\s*The visual illustration portrays the narrative event:[^\n]*\n+/gi, '');
-
-    // Purge dangerous keywords that trigger diffusion models to draw text/labels/diagrams
-    p = p.replace(/\binfographics?\b/gi, 'visual composition');
-    p = p.replace(/\bexplainer cartoons?\b/gi, 'character illustration');
-    p = p.replace(/\bexplainer\b/gi, 'visual storytelling');
-    p = p.replace(/\bdiagrams?\b/gi, 'composition');
-    p = p.replace(/\bcharts?\b/gi, 'visual scene');
-    p = p.replace(/\bcallout arrows?\b/gi, 'visual focus');
-    p = p.replace(/\bspeech bubbles?\b/gi, '');
-
-    // Ensure strict no-text directive is enforced
-    if (!p.includes('WORDLESS VISUAL SCENE') && !p.includes('CLEAN TEXTLESS ARTWORK')) {
-      p = `WORDLESS VISUAL SCENE: Absolutely NO text, NO speech bubbles, NO dialogue boxes, NO callout arrows, NO labels, NO words, NO letters, NO numbers, NO subtitles, NO captions, NO typography, NO watermarks.\n\n` + p;
-    }
-
-    // Always append comprehensive negative reinforcement
-    if (!p.toLowerCase().includes('speech bubbles')) {
-      p += `\n\nSTRICT EXCLUSIONS (DO NOT DRAW): speech bubbles, speech balloons, dialogue boxes, thought bubbles, callout arrows, annotated arrows, labels, charts, diagrams, infographics, word clouds, mock text, floating words, letters, alphabet, numbers, signs, banners, titles, subtitles, captions, watermarks, writing.`;
-    }
-
-    return p.trim();
+    return (rawPrompt || '').trim();
   }
 
   static async generateImage(
@@ -290,7 +264,7 @@ export class ImageService {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(60000)
+      signal: AbortSignal.timeout(120000)
     });
 
     if (!response.ok) {
@@ -345,8 +319,9 @@ export class ImageService {
     _width: number,
     _height: number
   ): { endpoint: string; payload: Record<string, any> } {
-    const w = _width || 1280;
-    const h = _height || 720;
+    const isVertical = _width < _height;
+    const w = _width || (isVertical ? 1080 : 1920);
+    const h = _height || (isVertical ? 1920 : 1080);
 
     switch (modelId) {
       case 'studio-ghibli':
@@ -366,7 +341,7 @@ export class ImageService {
           endpoint: 'https://gateway.pixazo.ai/flux-pro/v1/pro/textToImage',
           payload: {
             prompt,
-            image_size: w >= h ? 'landscape_16_9' : 'landscape_4_3'
+            image_size: w >= h ? 'landscape_16_9' : 'portrait_9_16'
           }
         };
 
@@ -378,8 +353,8 @@ export class ImageService {
             prompt,
             num_steps: 6,
             seed: Math.floor(Math.random() * 1000000),
-            width: Math.max(w, 1920),
-            height: Math.max(h, 1080)
+            width: w,
+            height: h
           }
         };
     }

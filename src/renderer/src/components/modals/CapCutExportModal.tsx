@@ -38,7 +38,7 @@ export const CapCutExportModal: React.FC<Props> = ({
   const [resolution, setResolution] = useState<'720p' | '1080p' | '4k'>('1080p');
   const [fps, setFps] = useState<24 | 30 | 60>(30);
   const [quality, setQuality] = useState<'high' | 'recommended' | 'fast'>('recommended');
-  const [burnSubtitles, setBurnSubtitles] = useState(true);
+  const [burnSubtitles] = useState(false);
   const [outputName, setOutputName] = useState(() => {
     const clean = (projectName || 'master').replace(/[^a-zA-Z0-9_-]/g, '_');
     return `${clean}.mp4`;
@@ -177,7 +177,7 @@ export const CapCutExportModal: React.FC<Props> = ({
                 <div className="w-full aspect-video bg-[#08090B] rounded-xl border border-[#2D3139] overflow-hidden relative shadow-inner flex items-center justify-center group">
                   {activeBeat?.imagePath ? (
                     <img
-                      src={getMediaUrl(activeBeat.imagePath, true)}
+                      src={getMediaUrl(activeBeat.imagePath)}
                       alt="Export Preview"
                       className="w-full h-full object-cover"
                     />
@@ -322,23 +322,13 @@ export const CapCutExportModal: React.FC<Props> = ({
                     </select>
                   </div>
 
-                  {/* Burn Subtitles */}
+                  {/* Voice Narration Mode (No Captions) */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] font-mono text-[#918FA1]">CAPTIONS</label>
-                    <button
-                      type="button"
-                      onClick={() => setBurnSubtitles(!burnSubtitles)}
-                      className={`h-9 rounded-lg border px-3 flex items-center justify-between text-xs font-mono transition-colors cursor-pointer ${
-                        burnSubtitles
-                          ? 'bg-[#00E5FF]/10 border-[#00E5FF]/50 text-[#00E5FF]'
-                          : 'bg-[#0B0D10] border-[#2D3139] text-[#918FA1]'
-                      }`}
-                    >
-                      <span>Burn Subtitles</span>
-                      <span className="material-symbols-outlined text-[18px]">
-                        {burnSubtitles ? 'check_box' : 'check_box_outline_blank'}
-                      </span>
-                    </button>
+                    <label className="text-[11px] font-mono text-[#918FA1]">NARRATION MODE</label>
+                    <div className="h-9 rounded-lg border border-[#00E5FF]/30 bg-[#00E5FF]/10 px-3 flex items-center gap-2 text-xs font-mono text-[#00E5FF]">
+                      <span className="material-symbols-outlined text-[16px]">graphic_eq</span>
+                      <span className="font-semibold">Pure Voice (No Captions)</span>
+                    </div>
                   </div>
                 </div>
 

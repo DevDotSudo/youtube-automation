@@ -1,5 +1,5 @@
-appId: com.psychoniche.generator
-productName: PsychoNiche Generator
+appId: com.sudoautomation.studio
+productName: Sudo Automation
 directories:
   buildResources: build
 files:

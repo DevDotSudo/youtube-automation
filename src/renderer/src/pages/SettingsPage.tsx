@@ -35,7 +35,7 @@ export const SettingsPage: React.FC = () => {
   const [motion, setMotion] = useState<MotionType>(MotionType.AUTO_HARD_EDIT);
   const [volume, setVolume] = useState(12);
 
-  // Pixazo AI Parallel Engine state
+    // Pixazo AI Parallel Engine state
   const [pixazoApiKey, setPixazoApiKey] = useState('');
   const [pixazoModel, setPixazoModel] = useState('flux-1-schnell');
   const [pixazoConcurrency, setPixazoConcurrency] = useState(5);
@@ -45,6 +45,29 @@ export const SettingsPage: React.FC = () => {
     tested: boolean;
     ready: boolean;
     message: string;
+  }>({
+    tested: false,
+    ready: false,
+    message: ''
+  });
+
+  // AI Prompt Generation State (Agnes AI Primary & Groq Fallback)
+  const [agnesApiKey, setAgnesApiKey] = useState('');
+  const [groqApiKey, setGroqApiKey] = useState('');
+  const [primaryProvider, setPrimaryProvider] = useState<'agnes' | 'groq'>('groq');
+  const [circuitBreakerInfo, setCircuitBreakerInfo] = useState<{
+    active: boolean;
+    remainingSeconds: number;
+    reason?: string;
+  }>({ active: false, remainingSeconds: 0 });
+  const [showAgnesKey, setShowAgnesKey] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
+  const [isTestingPromptAi, setIsTestingPromptAi] = useState(false);
+  const [aiPromptStatus, setAiPromptStatus] = useState<{
+    tested: boolean;
+    ready: boolean;
+    message: string;
+    samplePrompt?: string;
   }>({
     tested: false,
     ready: false,
@@ -67,6 +90,30 @@ export const SettingsPage: React.FC = () => {
         }
       });
     }
+
+    // Load AI Prompt config and circuit breaker status from environment
+    const aiApi = (window as any).docuforge?.aiPrompts;
+    if (aiApi?.getConfig) {
+      aiApi.getConfig().then((cfg: any) => {
+        if (cfg) {
+          if (cfg.agnesApiKey) setAgnesApiKey(cfg.agnesApiKey);
+          if (cfg.groqApiKey) setGroqApiKey(cfg.groqApiKey);
+          if (cfg.primaryProvider) setPrimaryProvider(cfg.primaryProvider);
+        }
+      });
+    }
+
+    if (aiApi?.checkHealth) {
+      aiApi.checkHealth().then((health: any) => {
+        if (health) {
+          setCircuitBreakerInfo({
+            active: health.agnesCircuitBreakerActive,
+            remainingSeconds: health.circuitBreakerRemainingSeconds,
+            reason: health.agnesFailureReason
+          });
+        }
+      });
+    }
   }, [fetchSettings]);
 
   useEffect(() => {
@@ -77,6 +124,51 @@ export const SettingsPage: React.FC = () => {
       setVolume(settings.musicVolumePercent);
     }
   }, [settings]);
+
+  
+  const handleResetCircuitBreaker = async () => {
+    const api = (window as any).docuforge?.aiPrompts;
+    if (api?.resetCircuitBreaker) {
+      await api.resetCircuitBreaker();
+      setCircuitBreakerInfo({ active: false, remainingSeconds: 0 });
+    }
+  };
+
+  const handleTestAiPrompt = async () => {
+    const api = (window as any).docuforge?.aiPrompts;
+    if (!api) return;
+    setIsTestingPromptAi(true);
+    try {
+      if (api.resetCircuitBreaker) {
+        await api.resetCircuitBreaker();
+      }
+      if (api.saveConfig) {
+        await api.saveConfig({ agnesApiKey, groqApiKey, primaryProvider });
+      }
+      const res = await api.generatePrompt({
+        scriptLine: 'A Stoic philosopher walking alone through ancient Rome at sunset.',
+        niche: 'stoic_philosophy',
+        shotType: 'WIDE_SCENE',
+        aspectRatio: '16:9'
+      });
+
+      setAiPromptStatus({
+        tested: true,
+        ready: true,
+        message: `Successfully generated via ${res.provider.toUpperCase()} (${res.model})`,
+        samplePrompt: res.prompt
+      });
+      setCircuitBreakerInfo({ active: false, remainingSeconds: 0 });
+    } catch (err: any) {
+      setAiPromptStatus({
+        tested: true,
+        ready: false,
+        message: err.message || 'AI Prompt test failed.'
+      });
+    } finally {
+      setIsTestingPromptAi(false);
+    }
+  };
 
   const handleTestPixazo = async () => {
     if (!window.docuforge?.pixazo) return;
@@ -120,8 +212,13 @@ export const SettingsPage: React.FC = () => {
         musicVolumePercent: volume
       });
 
-      if (window.docuforge?.pixazo?.saveConfig) {
+            if (window.docuforge?.pixazo?.saveConfig) {
         await window.docuforge.pixazo.saveConfig(pixazoApiKey, pixazoModel, pixazoConcurrency);
+      }
+
+      const aiPromptsApi = (window as any).docuforge?.aiPrompts;
+      if (aiPromptsApi?.saveConfig) {
+        await aiPromptsApi.saveConfig({ agnesApiKey, groqApiKey, primaryProvider });
       }
 
       setSaved(true);
@@ -134,7 +231,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 flex flex-col gap-6 max-w-4xl mx-auto w-full select-none">
+    <div className="p-10 flex flex-col gap-6 w-full select-none">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-4 border-b border-[#464555]/30">
         <div className="flex flex-col gap-1">
@@ -163,6 +260,211 @@ export const SettingsPage: React.FC = () => {
           </span>
           {saved ? 'Saved Successfully!' : isSaving ? 'Saving...' : 'Save Changes'}
         </button>
+      </div>
+
+      {/* AI Prompt Provider Card: Agnes AI & Groq (with Circuit Breaker & Primary Selector) */}
+      <div className="bg-[#1A1C1F] rounded-xl border border-[#00e5ff]/30 p-5 flex flex-col gap-4 shadow-lg">
+        <div className="flex items-center justify-between pb-3 border-b border-[#464555]/30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#8781FF]/15 border border-[#8781FF]/40 flex items-center justify-center text-[#8781FF]">
+              <span className="material-symbols-outlined text-[20px]">psychology</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[#E2E2E6]">Text-to-Image Prompt Providers</h2>
+                <span className="text-[10px] font-mono uppercase bg-[#8781FF]/20 text-[#C4C0FF] px-2 py-0.5 rounded-full border border-[#8781FF]/40 font-bold tracking-wider">
+                  {primaryProvider === 'groq' ? 'GROQ PRIMARY (AGNES FALLBACK)' : 'AGNES PRIMARY (GROQ FALLBACK)'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#918FA1]">
+                Prompts for Pixazo are generated by <code className={primaryProvider === 'groq' ? 'text-[#00e5ff]' : 'text-[#8781FF]'}>{primaryProvider === 'groq' ? 'Groq (openai/gpt-oss-120b)' : 'Agnes AI (agnes-2.0-flash)'}</code> with automatic circuit breaker fallback.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-semibold ${
+                aiPromptStatus.ready
+                  ? 'bg-[#00A572]/20 text-[#4EDEA3] border-[#00A572]/40'
+                  : 'bg-[#FFDE82]/20 text-[#FFDE82] border-[#FFDE82]/40'
+              }`}
+            >
+              {aiPromptStatus.ready ? 'AI Prompts Active' : 'Keys Configured'}
+            </span>
+          </div>
+        </div>
+
+        {/* Primary Provider Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-lg bg-[#141619] border border-[#464555]/30">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-[#E2E2E6]">Preferred Primary Provider</span>
+            <span className="text-[11px] text-[#918FA1]">
+              Groq provides high throughput without 429 rate limit spikes. Agnes AI is available with automatic cooldown.
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 p-1 bg-[#0C0E11] rounded-lg border border-[#464555]/40 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setPrimaryProvider('groq')}
+              className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-all flex items-center gap-1.5 ${
+                primaryProvider === 'groq'
+                  ? 'bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff]/50 font-bold shadow-sm'
+                  : 'text-[#918FA1] hover:text-[#E2E2E6]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">bolt</span>
+              Groq (Fast - Recommended)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrimaryProvider('agnes')}
+              className={`px-3 py-1 rounded text-xs font-medium cursor-pointer transition-all flex items-center gap-1.5 ${
+                primaryProvider === 'agnes'
+                  ? 'bg-[#8781FF]/20 text-[#C4C0FF] border border-[#8781FF]/50 font-bold shadow-sm'
+                  : 'text-[#918FA1] hover:text-[#E2E2E6]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">psychology</span>
+              Agnes AI
+            </button>
+          </div>
+        </div>
+
+        {/* Circuit Breaker Alert Banner */}
+        {circuitBreakerInfo.active && (
+          <div className="bg-[#FFB4AB]/10 border border-[#FFB4AB]/30 rounded-lg p-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-[#FFB4AB]">
+              <span className="material-symbols-outlined text-[18px]">warning</span>
+              <div>
+                <span className="font-bold">Agnes AI In Cooldown ({Math.ceil(circuitBreakerInfo.remainingSeconds / 60)}m left):</span> Hit rate limit or error. All prompt generation is routing directly to Groq with zero delay.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetCircuitBreaker}
+              className="px-2.5 py-1 rounded bg-[#FFB4AB]/20 text-[#FFB4AB] hover:bg-[#FFB4AB]/30 border border-[#FFB4AB]/40 font-mono text-[11px] font-semibold cursor-pointer transition-colors"
+            >
+              Reset Cooldown
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Agnes AI Key */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-[#C7C4D8] flex items-center gap-1">
+                <span>Agnes AI API Key</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                  primaryProvider === 'agnes'
+                    ? 'bg-[#8781FF]/20 text-[#8781FF]'
+                    : 'bg-[#464555]/30 text-[#918FA1]'
+                }`}>
+                  {primaryProvider === 'agnes' ? 'PRIMARY' : 'FALLBACK'}
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAgnesKey(!showAgnesKey)}
+                className="text-[11px] font-mono text-[#8781FF] hover:underline flex items-center gap-0.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[13px]">
+                  {showAgnesKey ? 'visibility_off' : 'visibility'}
+                </span>
+                {showAgnesKey ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={showAgnesKey ? 'text' : 'password'}
+                value={agnesApiKey}
+                onChange={(e) => setAgnesApiKey(e.target.value)}
+                placeholder="Paste AGNES_API_KEY..."
+                className="w-full h-9 px-3 bg-[#0C0E11] text-[#E2E2E6] text-xs font-mono rounded-lg border border-[#464555]/40 focus:outline-none focus:ring-1 focus:ring-[#8781FF]"
+              />
+            </div>
+            <span className="text-[10px] text-[#918FA1]">
+              Endpoint: <code className="text-[#8781FF]">https://apihub.agnes-ai.com/v1</code> (Model: agnes-2.0-flash)
+            </span>
+          </div>
+
+          {/* Groq Key */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-[#C7C4D8] flex items-center gap-1">
+                <span>Groq API Key</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                  primaryProvider === 'groq'
+                    ? 'bg-[#00e5ff]/20 text-[#00e5ff]'
+                    : 'bg-[#464555]/30 text-[#918FA1]'
+                }`}>
+                  {primaryProvider === 'groq' ? 'PRIMARY (RECOMMENDED)' : 'FALLBACK'}
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowGroqKey(!showGroqKey)}
+                className="text-[11px] font-mono text-[#00e5ff] hover:underline flex items-center gap-0.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[13px]">
+                  {showGroqKey ? 'visibility_off' : 'visibility'}
+                </span>
+                {showGroqKey ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type={showGroqKey ? 'text' : 'password'}
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                placeholder="Paste GROQ_API_KEY..."
+                className="w-full h-9 px-3 bg-[#0C0E11] text-[#E2E2E6] text-xs font-mono rounded-lg border border-[#464555]/40 focus:outline-none focus:ring-1 focus:ring-[#00e5ff]"
+              />
+            </div>
+            <span className="text-[10px] text-[#918FA1]">
+              Endpoint: <code className="text-[#00e5ff]">https://api.groq.com/openai/v1</code> (Model: openai/gpt-oss-120b)
+            </span>
+          </div>
+        </div>
+
+        {/* Test Connection Button & Status */}
+        <div className="flex flex-col gap-2 pt-2 border-t border-[#464555]/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleTestAiPrompt}
+                disabled={isTestingPromptAi || (!agnesApiKey.trim() && !groqApiKey.trim())}
+                className="h-8 px-3 rounded-lg bg-[#282A2D] hover:bg-[#34373C] text-[#C4C0FF] text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <span className={`material-symbols-outlined text-[16px] ${isTestingPromptAi ? 'animate-spin' : ''}`}>
+                  {isTestingPromptAi ? 'progress_activity' : 'auto_fix_high'}
+                </span>
+                {isTestingPromptAi ? 'Generating Test Prompt...' : 'Test AI Prompt Generation'}
+              </button>
+
+              {aiPromptStatus.tested && (
+                <span
+                  className={`text-xs flex items-center gap-1 font-mono ${
+                    aiPromptStatus.ready ? 'text-[#4EDEA3]' : 'text-[#FFB4AB]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {aiPromptStatus.ready ? 'check_circle' : 'error'}
+                  </span>
+                  {aiPromptStatus.message}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {aiPromptStatus.samplePrompt && (
+            <div className="p-3 bg-[#0C0E11] rounded-lg border border-[#8781FF]/30 text-xs font-mono text-[#C7C4D8] leading-relaxed">
+              <span className="text-[#8781FF] font-bold block mb-1">Generated Diffusion Prompt:</span>
+              "{aiPromptStatus.samplePrompt}"
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Pixazo AI Parallel Generation Engine Card */}

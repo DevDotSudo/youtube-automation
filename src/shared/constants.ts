@@ -2,128 +2,228 @@ import { CaptionPresetName, CaptionStyleConfig, VisualNicheOption } from './type
 
 export const VISUAL_NICHES: VisualNicheOption[] = [
   {
+    id: 'billionaire_mindset',
+    name: 'Wealth, Luxury & High Finance',
+    category: 'Finance & High RPM',
+    description: 'Stylized 3D cartoon luxury-finance cinematic style, polished characters, executive offices, penthouses, modern financial districts, refined materials, cinematic lighting.',
+    icon: 'attach_money',
+    color: '#10B981',
+    badge: 'HIGHEST RPM ($15-$25)',
+    samplePromptKeywords: [
+      'stylized 3D cartoon luxury finance cinematic style',
+      'premium business atmosphere',
+      'elegant modern wealth aesthetic',
+      'polished materials',
+      'cinematic lighting'
+    ]
+  },
+  {
     id: 'stoic_philosophy',
     name: 'Stoicism & Ancient Philosophy',
     category: 'Wisdom & High RPM',
-    description: 'Caravaggio chiaroscuro oil painting, weathered marble busts, ancient Roman & Greek candlelit halls.',
+    description: 'Stylized 3D cartoon Greco-Roman philosophy style, 3D cartoon ancient philosophers, marble temples, ancient courtyards, Mediterranean landscapes, cinematic warm sunlight.',
     icon: 'account_balance',
     color: '#D4AF37',
     badge: 'HIGH RPM ($10-$18)',
-    samplePromptKeywords: ['chiaroscuro oil painting', 'weathered marble bust', 'Caravaggio shadows', 'ancient Rome']
+    samplePromptKeywords: [
+      'stylized 3D cartoon Greco-Roman philosophy style',
+      'ancient marble architecture',
+      'contemplative atmosphere',
+      'cinematic sunlight',
+      'wise and timeless mood'
+    ]
   },
   {
     id: 'stickman_doodle',
     name: 'Stickman & Minimalist Doodle',
     category: 'Viral Explainer',
-    description: 'Clean hand-drawn stick figure animation style, expressive doodle characters, black ink line art (MinutePhysics / Casually Explained style).',
+    description: 'Colorful 2D cartoon stickman storytelling style, consistent faceless stickman character, clean simple shapes, expressive body language, bright visual clarity.',
     icon: 'gesture',
     color: '#38BDF8',
     badge: 'VIRAL FORMAT',
-    samplePromptKeywords: ['minimalist stickman illustration', 'black ink line art', 'expressive doodle', 'whiteboard explainer']
+    samplePromptKeywords: [
+      'colorful 2D cartoon stickman illustration',
+      'clean simple shapes',
+      'expressive body language',
+      'readable storytelling composition',
+      'bright visual clarity'
+    ]
   },
   {
     id: 'studio_ghibli',
     name: 'Studio Ghibli Watercolor Anime',
     category: 'Cozy & Storytelling',
-    description: 'Authentic Hayao Miyazaki & Makoto Shinkai hand-painted gouache, lush watercolor scenery, cozy nostalgic aesthetic.',
+    description: 'Original nostalgic hand-painted watercolor anime fantasy, soft painterly backgrounds, lush natural settings, expressive original anime-inspired characters, warm natural lighting.',
     icon: 'park',
     color: '#4ADE80',
     badge: 'TIMELESS',
-    samplePromptKeywords: ['Studio Ghibli watercolor', 'Hayao Miyazaki aesthetic', 'hand-painted gouache', '16:9 anime']
+    samplePromptKeywords: [
+      'nostalgic hand-painted watercolor anime aesthetic',
+      'soft painterly backgrounds',
+      'warm natural lighting',
+      'whimsical original fantasy environment'
+    ]
   },
   {
     id: 'cosmic_scifi',
     name: 'Cosmic Scale & Sci-Fi Lore',
     category: 'Sci-Fi & Astronomy',
-    description: 'Monolithic retro-futurism (Syd Mead / Chris Foss), Dyson spheres, vast planetary rings, derelict starships in deep space.',
+    description: 'Stylized 3D cartoon sci-fi epic style, giant planets, nebulae, black holes, ships, orbital structures, colossal cosmic scale, dramatic celestial lighting.',
     icon: 'rocket_launch',
     color: '#A855F7',
     badge: 'COLOSSAL SCALE',
-    samplePromptKeywords: ['monolithic sci-fi matte painting', 'Dyson sphere', 'deep space silence', 'retro-futurism']
+    samplePromptKeywords: [
+      'stylized 3D cartoon science-fiction cinematic style',
+      'colossal cosmic scale',
+      'dramatic celestial lighting',
+      'awe-filled space environments'
+    ]
   },
   {
     id: 'true_crime_noir',
     name: 'Cold War Espionage & True Crime',
     category: 'History & Documentary',
-    description: 'Gritty 35mm analog film noir, 1970s desaturated surveillance stills, flash photography, rain-slicked asphalt.',
+    description: 'Stylized 3D cartoon espionage-thriller style, period-accurate Cold War atmosphere, classified files, shadowy offices, moody shadows, investigative cinematic tension.',
     icon: 'fingerprint',
     color: '#F43F5E',
-    samplePromptKeywords: ['vintage 35mm film photograph', '1970s film noir', 'grainy surveillance', 'desaturated realism']
+    samplePromptKeywords: [
+      'stylized 3D cartoon espionage thriller style',
+      'period-accurate Cold War atmosphere',
+      'moody shadows',
+      'investigative cinematic tension'
+    ]
   },
   {
     id: 'ancient_civilizations',
-    name: 'Ancient Civilizations & Archeology',
+    name: 'Ancient Civilizations & Archaeology',
     category: 'History & Discovery',
-    description: 'Dramatic torchlit excavations, colossal sandstone pharaohs, underground crypts, golden hieroglyphic reliefs.',
+    description: 'Stylized 3D cartoon archaeology and ancient-world style, ancient cities, temples, excavation sites, artifacts, cinematic sunlit ruins, discovery atmosphere.',
     icon: 'temple_hindu',
     color: '#F59E0B',
-    samplePromptKeywords: ['ancient archaeological excavation', 'colossal stone statue', 'torchlight', 'hieroglyphics']
+    samplePromptKeywords: [
+      'stylized 3D cartoon ancient civilization style',
+      'archaeological discovery atmosphere',
+      'historically grounded architecture',
+      'cinematic environmental storytelling'
+    ]
+  },
+  {
+    id: 'ancient_history_stone_age',
+    name: 'Ancient History & Stone Age (2D Stick Figure)',
+    category: 'History & Viral Explainer',
+    description: 'Cartoon stick figure Stone Age animation style, primitive fur and animal-hide clothing, campfires, huts, spears, expressive 2D stickman characters, flat 2D animation style.',
+    icon: 'history_edu',
+    color: '#D97706',
+    badge: 'VIRAL 2D STICKMAN',
+    samplePromptKeywords: [
+      'Cartoon stick figure Stone Age',
+      'primitive fur and animal-hide clothing',
+      'black stick arms',
+      'Stone Age village background',
+      'flat 2D animation style'
+    ]
   },
   {
     id: 'dark_academia',
     name: 'Dark Academia & Victorian Mystery',
     category: 'Literature & Essays',
-    description: 'Towering multi-story mahogany libraries, rain on gothic stained-glass windows, antique telescopes, leather grimoires.',
+    description: 'Stylized 3D cartoon Victorian dark-academia style, 3D scholars, old libraries, candlelit studies, foggy streets, gothic mystery atmosphere, elegant moody storytelling.',
     icon: 'local_library',
     color: '#B45309',
-    samplePromptKeywords: ['dark academia aesthetic', 'Victorian gothic library', 'stormy rain on windows', 'antique brass']
+    samplePromptKeywords: [
+      'stylized 3D cartoon Victorian dark academia style',
+      'gothic mystery atmosphere',
+      'candlelit interiors',
+      'elegant moody storytelling'
+    ]
   },
   {
     id: 'epic_battles',
     name: 'Epic Historical Battles',
     category: 'Military Strategy',
-    description: 'Grand 19th-century academic battle paintings, smoke-filled cannon lines, charging cavalry, panoramic war canvas.',
+    description: 'Stylized 3D cartoon historical battle cinema, large-scale battlefield scenes, period-accurate armor and weapons, cavalry, forts, dramatic scale, tactical action storytelling.',
     icon: 'swords',
     color: '#E11D48',
-    samplePromptKeywords: ['epic historical battle oil painting', 'cannon smoke', 'cavalry charge', 'panoramic canvas']
+    samplePromptKeywords: [
+      'stylized 3D cartoon historical battle cinema',
+      'period-accurate warfare',
+      'dramatic scale',
+      'tactical action storytelling'
+    ]
   },
   {
     id: 'dark_folklore',
     name: 'Dark Folklore & Mythic Legends',
     category: 'Mythology & Fantasy',
-    description: 'Dark Scandinavian storybook concept art, ancient carved runestones, foggy pine forests, eerie pagan ritual fires.',
+    description: 'Stylized 3D cartoon dark folklore fantasy, ancient forests, misty villages, remote mountains, shrines, torchlight, eerie mythic atmosphere, ancient legendary mood.',
     icon: 'forest',
     color: '#059669',
-    samplePromptKeywords: ['dark fantasy concept art', 'Nordic folklore', 'carved runestones', 'misty pine forest']
+    samplePromptKeywords: [
+      'stylized 3D cartoon dark folklore style',
+      'eerie mythic atmosphere',
+      'misty landscapes',
+      'torchlit mystery',
+      'ancient legendary mood'
+    ]
   },
   {
     id: 'liminal_horror',
     name: 'Liminal Spaces & Analog Horror',
     category: 'Horror & Mystery',
-    description: 'Eerie 1990s VHS camcorder aesthetic, humming fluorescent yellow carpet corridors, uncanny dreamcore stillness.',
+    description: 'Stylized 3D cartoon liminal horror atmosphere, uncanny empty buildings, fluorescent lights, empty halls, surreal atmospheric tension, subtle analog unease.',
     icon: 'videocam',
     color: '#EAB308',
-    samplePromptKeywords: ['liminal space', 'yellow carpet hallway', 'humming fluorescent lights', 'VHS tape grain']
+    samplePromptKeywords: [
+      'stylized 3D cartoon liminal horror style',
+      'uncanny empty architecture',
+      'fluorescent unease',
+      'surreal atmospheric tension'
+    ]
   },
   {
     id: 'surrealist_thought',
     name: 'Surrealism & Thought Experiments',
     category: 'Psychology & Paradoxes',
-    description: 'Rene Magritte minimalist conceptual art, solitary doorways in sand dunes, symbolic paradoxes, stark geometric shadows.',
+    description: 'Stylized 3D cartoon conceptual surrealism, impossible architecture, symbolic objects, floating elements, dreamlike visual metaphors, cinematic imaginative design.',
     icon: 'lightbulb',
     color: '#06B6D4',
-    samplePromptKeywords: ['minimalist surrealist concept art', 'Rene Magritte aesthetic', 'isolated door in sand dunes', 'symbolic']
+    samplePromptKeywords: [
+      'stylized 3D cartoon conceptual surrealism',
+      'impossible symbolic environments',
+      'dreamlike visual metaphors',
+      'cinematic imaginative design'
+    ]
   },
   {
     id: 'cyberpunk_noir',
     name: 'Cyberpunk Dystopia & Techno-Noir',
     category: 'Futurism & Tech',
-    description: 'Blade Runner 1982 aesthetic, massive corporate mega-pyramids, neon reflections on wet asphalt, dense flying spinner traffic.',
+    description: 'Stylized 3D cartoon cyberpunk techno-noir, futuristic cities, rain-soaked streets, neon reflections, megacorporate architecture, dark dystopian cinematic mood.',
     icon: 'location_city',
     color: '#00E5FF',
-    samplePromptKeywords: ['Blade Runner retro-cyberpunk', 'neon reflections on wet asphalt', 'brutalist corporate mega-tower']
+    samplePromptKeywords: [
+      'stylized 3D cartoon cyberpunk techno-noir style',
+      'rain-soaked futuristic city',
+      'atmospheric neon reflections',
+      'dark dystopian cinematic mood'
+    ]
   },
   {
     id: 'extreme_survival',
     name: 'Extreme Survival & Expeditions',
     category: 'Adventure & Survival',
-    description: 'Rugged National Geographic documentary stills, solitary tent in Himalayan blizzards, Arctic ice sheets under green auroras.',
+    description: 'Stylized 3D cartoon expedition documentary style, harsh wilderness environments, survival gear, dramatic weather, human endurance, cinematic exploration mood.',
     icon: 'snowboarding',
     color: '#64748B',
-    samplePromptKeywords: ['National Geographic documentary photograph', 'solitary tent in blizzard', 'jagged mountain peak']
+    samplePromptKeywords: [
+      'stylized 3D cartoon expedition adventure style',
+      'extreme environments',
+      'survival realism in cartoon form',
+      'dramatic weather',
+      'cinematic exploration mood'
+    ]
   }
 ];
-
 
 export const EDGE_NEURAL_VOICES = [
   // Flagship Multilingual Neural (Highest fidelity, ultra-natural human tone)
@@ -150,7 +250,7 @@ export const EDGE_NEURAL_VOICES = [
   { id: 'en-CA-LiamNeural', label: 'Liam (Canadian Male - Smooth, Friendly & Clear)', gender: 'Male', accent: 'Canadian', tone: 'Smooth & Friendly' }
 ];
 
-export const KOKORO_VOICES: typeof EDGE_NEURAL_VOICES = [];
+// Microsoft Edge Neural voices are the active standard voice engine
 
 export const AVAILABLE_VOICES = EDGE_NEURAL_VOICES;
 
@@ -522,6 +622,34 @@ export const MOTION_OPTIONS = [
   { id: 'PUNCH_IN', label: 'Punch In (Emphasis Snap Zoom)' }
 ];
 
+
+export const IN_ANIMATION_OPTIONS = [
+  { id: 'NONE', label: 'None (Instant Cut In)' },
+  { id: 'FADE_IN', label: 'Fade In (Smooth Dissolve Entry)' },
+  { id: 'ZOOM_IN', label: 'Zoom In (Kinetic Forward Push)' },
+  { id: 'ZOOM_OUT', label: 'Zoom Out (Dramatic Pull-Back Reveal)' },
+  { id: 'SLIDE_LEFT', label: 'Slide In Left (Right to Left Slide)' },
+  { id: 'SLIDE_RIGHT', label: 'Slide In Right (Left to Right Slide)' },
+  { id: 'SLIDE_UP', label: 'Slide In Up (Rising Reveal)' },
+  { id: 'SLIDE_DOWN', label: 'Slide In Down (Descending Reveal)' },
+  { id: 'WIPE_IN', label: 'Wipe In (Horizontal Scanline Entry)' },
+  { id: 'FLASH_WHITE', label: 'Flash White In (High-Energy Strobe)' },
+  { id: 'POP_IN', label: 'Pop In (Impact Scale Bounce)' }
+];
+
+export const OUT_ANIMATION_OPTIONS = [
+  { id: 'NONE', label: 'None (Instant Cut Out)' },
+  { id: 'FADE_OUT', label: 'Fade Out (Smooth Dissolve Exit)' },
+  { id: 'ZOOM_OUT', label: 'Zoom Out (Accelerated Pull Exit)' },
+  { id: 'ZOOM_IN', label: 'Zoom In (Punch-Through Climax Exit)' },
+  { id: 'SLIDE_LEFT', label: 'Slide Out Left (Fast Exit Left)' },
+  { id: 'SLIDE_RIGHT', label: 'Slide Out Right (Fast Exit Right)' },
+  { id: 'SLIDE_DOWN', label: 'Slide Out Down (Drop-Down Exit)' },
+  { id: 'WIPE_OUT', label: 'Wipe Out (Horizontal Fade Away)' },
+  { id: 'FLASH_WHITE', label: 'Flash White Out (Whiteout Climax)' },
+  { id: 'DIP_BLACK', label: 'Dip to Black (Cinematic Blackout)' }
+];
+
 export const TRANSITION_OPTIONS = [
   { id: 'DISSOLVE', label: 'Gentle Cross-Dissolve (0.3s - Ghibli Default)' },
   { id: 'CUT', label: 'Instant Cut' },
@@ -681,5 +809,32 @@ export const VIDEO_EFFECT_PRESETS: VideoEffectPreset[] = [
     ffmpegFilter: 'eq=contrast=1.14:saturation=1.28',
     cssFilter: 'contrast(1.14) saturate(1.28)',
     cssOverlay: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 22%, transparent 78%, rgba(0,0,0,0.3) 100%)'
+  },
+  {
+    id: 'analog_noise',
+    name: 'Analog Noise',
+    category: 'Retro & Glitch',
+    description: 'CapCut style analog CRT scanlines, temporal phosphor noise, and vivid broadcast saturation. Zero downloads.',
+    ffmpegFilter: 'drawgrid=w=iw:h=3:t=1:c=black@0.12,noise=c0s=22:c0f=t+u:c1s=12:c1f=t+u:c2s=12:c2f=t+u,eq=contrast=1.06:saturation=1.12',
+    cssFilter: 'contrast(1.06) saturate(1.12)',
+    cssOverlay: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 3px), radial-gradient(circle, transparent 75%, rgba(0,0,0,0.25) 100%)'
+  },
+  {
+    id: 'vintage_noise',
+    name: 'Vintage Noise',
+    category: 'Retro & Glitch',
+    description: 'CapCut PRO style golden amber vintage color balance, organic celluloid grain, shutter flicker, and optical lens vignette. Zero downloads.',
+    ffmpegFilter: 'colorbalance=rs=0.12:gs=0.04:bs=-0.08,noise=c0s=26:c0f=t+u:c1s=14:c1f=t+u,eq=contrast=1.1:brightness=0.02+0.015*sin(2*PI*t*8):saturation=1.05,vignette=PI/5',
+    cssFilter: 'contrast(1.1) sepia(0.2) saturate(1.05)',
+    cssOverlay: 'radial-gradient(ellipse at 35% 45%, rgba(255,255,255,0.15) 0%, transparent 8%), radial-gradient(ellipse at 70% 60%, rgba(255,255,255,0.12) 0%, transparent 6%), radial-gradient(circle, transparent 65%, rgba(40,20,0,0.45) 100%)'
+  },
+  {
+    id: 'antique_film',
+    name: 'Antique Film',
+    category: 'Retro & Glitch',
+    description: 'CapCut PRO style 1920s archival silent cinema look with sepia desaturation, projector shutter oscillation, heavy grain, and deep vignette. Zero downloads.',
+    ffmpegFilter: 'hue=s=0.25,colorbalance=rs=0.18:gs=0.08:bs=-0.14,noise=alls=30:allf=t+u,eq=brightness=0.02*sin(2*PI*t*10):contrast=1.25,vignette=PI/3.5',
+    cssFilter: 'grayscale(0.65) sepia(0.4) contrast(1.25) brightness(1.02)',
+    cssOverlay: 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.7) 100%)'
   }
 ];

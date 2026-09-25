@@ -14,7 +14,7 @@ export const AppShell: React.FC = () => {
         {!isEditorPage && <Sidebar />}
         <main
           className={`flex-1 overflow-hidden bg-[#0A0C0F] ${
-            isEditorPage ? 'm-0' : 'ml-60 overflow-y-auto'
+            isEditorPage ? 'm-0' : 'ml-72 overflow-y-auto'
           }`}
         >
           <Outlet />

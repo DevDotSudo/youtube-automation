@@ -32,8 +32,8 @@ export class VisualBeatRepository {
       INSERT INTO visual_beats (
         id, scene_id, project_id, beat_index, start_offset_ms, end_offset_ms,
         duration_ms, shot_type, visual_concept, environment_description, image_prompt,
-        image_path, generation_status, motion, transition, transition_duration_ms, keyword, keyword_enabled, video_effect
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_path, generation_status, motion, transition, transition_duration_ms, keyword, keyword_enabled, video_effect, in_animation, out_animation, in_animation_duration_ms, out_animation_duration_ms, script_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     insert.run(
       beat.id,
@@ -54,7 +54,12 @@ export class VisualBeatRepository {
       beat.transitionDurationMs || 0,
       beat.keyword || null,
       beat.keywordEnabled ? 1 : 0,
-      beat.videoEffect || 'none'
+      beat.videoEffect || 'none',
+      beat.inAnimation || 'NONE',
+      beat.outAnimation || 'NONE',
+      beat.inAnimationDurationMs ?? 400,
+      beat.outAnimationDurationMs ?? 400,
+      beat.scriptText || null
     );
     return beat;
   }
@@ -66,8 +71,8 @@ export class VisualBeatRepository {
       INSERT INTO visual_beats (
         id, scene_id, project_id, beat_index, start_offset_ms, end_offset_ms,
         duration_ms, shot_type, visual_concept, environment_description, image_prompt,
-        image_path, generation_status, motion, transition, transition_duration_ms, keyword, keyword_enabled, video_effect
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_path, generation_status, motion, transition, transition_duration_ms, keyword, keyword_enabled, video_effect, in_animation, out_animation, in_animation_duration_ms, out_animation_duration_ms, script_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = db.transaction((items: VisualBeat[]) => {
@@ -91,7 +96,12 @@ export class VisualBeatRepository {
           b.transitionDurationMs || 0,
           b.keyword || null,
           b.keywordEnabled ? 1 : 0,
-          b.videoEffect || 'none'
+          b.videoEffect || 'none',
+          b.inAnimation || 'NONE',
+          b.outAnimation || 'NONE',
+          b.inAnimationDurationMs ?? 400,
+          b.outAnimationDurationMs ?? 400,
+          b.scriptText || null
         );
       }
     });
@@ -121,7 +131,12 @@ export class VisualBeatRepository {
         transition_duration_ms = ?,
         keyword = ?,
         keyword_enabled = ?,
-        video_effect = ?
+        video_effect = ?,
+        in_animation = ?,
+        out_animation = ?,
+        in_animation_duration_ms = ?,
+        out_animation_duration_ms = ?,
+        script_text = ?
       WHERE id = ?
     `).run(
       merged.startOffsetMs,
@@ -139,6 +154,11 @@ export class VisualBeatRepository {
       merged.keyword || null,
       merged.keywordEnabled ? 1 : 0,
       merged.videoEffect || 'none',
+      merged.inAnimation || 'NONE',
+      merged.outAnimation || 'NONE',
+      merged.inAnimationDurationMs ?? 400,
+      merged.outAnimationDurationMs ?? 400,
+      merged.scriptText || null,
       id
     );
 
@@ -175,7 +195,12 @@ export class VisualBeatRepository {
       transitionDurationMs: r.transition_duration_ms || 0,
       keyword: r.keyword || undefined,
       keywordEnabled: Boolean(r.keyword_enabled),
-      videoEffect: r.video_effect || 'none'
+      videoEffect: r.video_effect || 'none',
+      inAnimation: (r.in_animation as any) || 'NONE',
+      outAnimation: (r.out_animation as any) || 'NONE',
+      inAnimationDurationMs: r.in_animation_duration_ms ?? 400,
+      outAnimationDurationMs: r.out_animation_duration_ms ?? 400,
+      scriptText: r.script_text || undefined
     };
   }
 }

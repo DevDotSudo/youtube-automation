@@ -76,6 +76,14 @@ export interface VisualBeat {
 
   videoEffect?: string;
 
+  inAnimation?: 'NONE' | 'FADE_IN' | 'ZOOM_IN' | 'ZOOM_OUT' | 'SLIDE_LEFT' | 'SLIDE_RIGHT' | 'SLIDE_UP' | 'SLIDE_DOWN' | 'WIPE_IN' | 'FLASH_WHITE' | 'POP_IN';
+  outAnimation?: 'NONE' | 'FADE_OUT' | 'ZOOM_OUT' | 'ZOOM_IN' | 'SLIDE_LEFT' | 'SLIDE_RIGHT' | 'SLIDE_DOWN' | 'WIPE_OUT' | 'FLASH_WHITE' | 'DIP_BLACK';
+  inAnimationDurationMs?: number;
+  outAnimationDurationMs?: number;
+
+  scriptText?: string;
+  isCustomPrompt?: boolean;
+
   createdAt?: string;
   updatedAt?: string;
 }
@@ -97,6 +105,9 @@ export interface Project {
   defaultVideoEffect?: string;
   thumbnailPath?: string;
   visualNiche?: string;
+  characterLock?: string;
+  platform?: 'YOUTUBE' | 'FACEBOOK';
+  aspectRatio?: '16:9' | '9:16';
   createdAt: string;
   updatedAt: string;
 }
@@ -168,6 +179,10 @@ export interface SceneEditConfig {
   motionType?: MotionType;
   transitionType?: TransitionType;
   voiceSpeed?: number;
+  inAnimation?: string;
+  outAnimation?: string;
+  inAnimationDurationMs?: number;
+  outAnimationDurationMs?: number;
 }
 
 export interface RenderRecord {
@@ -185,7 +200,6 @@ export interface AppSettings {
   workspacePath: string;
   defaultVoiceId: string;
   pixazoResolution?: string;
-  parrotAiResolution?: string;
   defaultMotion: MotionType;
   subtitleMode: string;
   musicVolumePercent: number;
@@ -208,6 +222,7 @@ export interface ParsedScene {
   endMs: number;
   durationMs: number;
   text: string;
+  customPrompt?: string;
 }
 
 export interface ParseResult {
@@ -222,6 +237,8 @@ export interface CreateProjectPayload {
   scriptContent: string;
   voiceId?: string;
   visualNiche?: string;
+  platform?: 'YOUTUBE' | 'FACEBOOK';
+  aspectRatio?: '16:9' | '9:16';
 }
 
 export interface ParallelImageTask {
@@ -267,11 +284,11 @@ export interface SystemStatusInfo {
   workspaceExists: boolean;
   ffmpeg: boolean;
   ffprobe: boolean;
-  kokoroService: boolean;
+  voiceService?: boolean;
+  voiceEngine?: string;
   pixazoService: boolean;
   pixazoConfigured: boolean;
   pixazoModel?: string;
-  parrotAiService?: boolean;
   browserInstalled?: boolean;
   imageConcurrency?: number;
   imageEngine?: string;
@@ -288,4 +305,85 @@ export interface VideoExportOptions {
   bgmVolume?: number;
   captionStyle?: CaptionStyleConfig;
   outputFileName?: string;
+}
+
+export interface StockVideoFile {
+  quality: string;
+  width: number;
+  height: number;
+  fps?: number;
+  link: string;
+}
+
+export interface StockMediaItem {
+  id: string;
+  source: 'pinterest' | 'pexels' | 'pixabay' | 'nasa' | 'wikimedia' | 'archive' | 'youtube';
+  mediaType: 'video' | 'photo';
+  title: string;
+  thumbnailUrl: string;
+  previewUrl?: string;
+  downloadUrl: string;
+  durationSec?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: '16:9' | '9:16' | '1:1';
+  resolution?: string;
+  fps?: number;
+  author?: string;
+  authorUrl?: string;
+  tags?: string[];
+  videoFiles?: StockVideoFile[];
+  hasAudio?: boolean;
+  license?: string;
+}
+
+export interface StockSearchOptions {
+  query: string;
+  source?: 'all' | 'pinterest' | 'pexels' | 'pixabay' | 'nasa' | 'wikimedia' | 'archive' | 'youtube';
+  mediaType?: 'all' | 'video' | 'photo';
+  orientation?: 'all' | 'landscape' | 'portrait' | 'square';
+  page?: number;
+  limit?: number;
+}
+
+export interface SaveClipOptions {
+  url: string;
+  title: string;
+  filename?: string;
+  targetDirectory?: string;
+  chooseLocation?: boolean;
+  quality?: string;
+}
+
+export interface SaveClipResult {
+  success: boolean;
+  filePath?: string;
+  fileSize?: number;
+  error?: string;
+}
+
+export interface LocalClipRecord {
+  filename: string;
+  filePath: string;
+  sizeBytes: number;
+  createdAt: number;
+  thumbnail?: string;
+}
+
+
+export interface ViralMetadataResult {
+  title: string;
+  titles: string[];
+  description: string;
+  hashtags: string[];
+  thumbnailPrompt: string;
+}
+
+export interface FacebookViralPack {
+  hook: string;
+  caption: string;
+  hashtags: string[];
+  callToAction: string;
+  suggestedAudioVibe?: string;
+  fullPostText?: string;
 }

@@ -1,4 +1,4 @@
-import { Project, Scene, VisualBeat, CreateProjectPayload, ParseResult, AppSettings, SystemStatusInfo, SceneEditConfig, CaptionStyleConfig, VideoExportOptions } from '../shared/types';
+import { Project, Scene, VisualBeat, CreateProjectPayload, ParseResult, AppSettings, SystemStatusInfo, SceneEditConfig, CaptionStyleConfig, VideoExportOptions, StockMediaItem, ViralMetadataResult, FacebookViralPack, StockSearchOptions, SaveClipOptions, SaveClipResult, LocalClipRecord } from '../shared/types';
 
 export interface DocuforgeApi {
   projects: {
@@ -9,6 +9,8 @@ export interface DocuforgeApi {
     update: (id: string, patch: Partial<Project>) => Promise<Project>;
     autoEdit: (projectId: string) => Promise<Scene[]>;
     autoCaption: (projectId: string) => Promise<any>;
+    syncTimeline: (projectId: string) => Promise<any>;
+    syncCaptions: (projectId: string) => Promise<any>;
     regenerateAllVoice: (projectId: string) => Promise<any>;
   };
   scripts: {
@@ -104,7 +106,50 @@ export interface DocuforgeApi {
     openPath: (path: string) => Promise<void>;
     showItemInFolder: (path: string) => Promise<void>;
   };
+  stockMedia: {
+    search: (queryOrOptions: string | StockSearchOptions, source?: string, mediaType?: string) => Promise<StockMediaItem[]>;
+    downloadToBeat: (item: any, beatId: string, projectId: string) => Promise<{ success: boolean; localPath: string; isVideo: boolean }>;
+    generateViralMetadata: (script: string, projectName: string) => Promise<ViralMetadataResult>;
+    generateCharacterProfile: (script: string) => Promise<string>;
+    scrapeVideosForScript: (script: string, niche?: string, aspectRatio?: '9:16' | '16:9') => Promise<StockMediaItem[]>;
+    generateFacebookViralPack: (script: string, projectName: string, niche?: string) => Promise<FacebookViralPack>;
+    saveClipLocally: (options: SaveClipOptions) => Promise<SaveClipResult>;
+    selectClipsFolder: () => Promise<{ canceled: boolean; folderPath?: string }>;
+    getClipsFolder: () => Promise<string>;
+    getDownloadedClips: (customFolder?: string) => Promise<LocalClipRecord[]>;
+    deleteDownloadedClip: (filePath: string) => Promise<boolean>;
+  };
+  aiPrompts: {
+    getConfig: () => Promise<{
+      agnesApiKey: string;
+      agnesModel: string;
+      groqApiKey: string;
+      groqModel: string;
+      primaryProvider: 'agnes' | 'groq';
+    }>;
+    checkHealth: () => Promise<{
+      agnesConfigured: boolean;
+      groqConfigured: boolean;
+      primaryProvider: 'agnes' | 'groq';
+      primary: string;
+      fallback: string;
+      activeProvider: string;
+      agnesCircuitBreakerActive: boolean;
+      agnesFailureReason: string;
+      circuitBreakerRemainingSeconds: number;
+    }>;
+    generatePrompt: (params: any) => Promise<{ prompt: string; provider: 'agnes' | 'groq'; model: string }>;
+    saveConfig: (config: {
+      agnesApiKey?: string;
+      agnesModel?: string;
+      groqApiKey?: string;
+      groqModel?: string;
+      primaryProvider?: 'agnes' | 'groq';
+    }) => Promise<{ success: boolean; agnesConfigured: boolean; groqConfigured: boolean; primaryProvider: 'agnes' | 'groq' }>;
+    resetCircuitBreaker: () => Promise<{ success: boolean }>;
+  };
   pixazo: {
+
     getConfig: () => Promise<{ apiKey: string; model: string; concurrency?: number }>;
     saveConfig: (apiKey: string, model: string, concurrency?: number) => Promise<{ success: boolean; pixazoApiKeySet: boolean; model: string; concurrency?: number }>;
     checkHealth: () => Promise<{ ready: boolean; service: string; model?: string }>;
@@ -147,6 +192,5 @@ export interface DocuforgeApi {
 declare global {
   interface Window {
     docuforge: DocuforgeApi;
-    psychoniche: DocuforgeApi;
   }
 }

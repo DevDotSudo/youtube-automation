@@ -34,6 +34,9 @@ export class ProjectRepository {
       musicPath: r.music_path,
       thumbnailPath: this.resolveThumbnail(r),
       visualNiche: r.visual_niche || 'stoic_philosophy',
+      characterLock: r.character_lock || undefined,
+      platform: (r.platform as any) || 'YOUTUBE',
+      aspectRatio: (r.aspect_ratio as any) || '16:9',
       captionStyle: r.caption_style_json ? JSON.parse(r.caption_style_json) : undefined,
       createdAt: r.created_at,
       updatedAt: r.updated_at
@@ -56,6 +59,8 @@ export class ProjectRepository {
       musicPath: r.music_path,
       thumbnailPath: this.resolveThumbnail(r),
       visualNiche: r.visual_niche || 'stoic_philosophy',
+      platform: (r.platform as any) || 'YOUTUBE',
+      aspectRatio: (r.aspect_ratio as any) || '16:9',
       captionStyle: r.caption_style_json ? JSON.parse(r.caption_style_json) : undefined,
       createdAt: r.created_at,
       updatedAt: r.updated_at
@@ -65,8 +70,8 @@ export class ProjectRepository {
   static create(project: Project): void {
     const db = getDb();
     db.prepare(`
-      INSERT INTO projects (id, name, status, project_path, script_path, duration_ms, scene_count, voice_id, music_path, thumbnail_path, visual_niche, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO projects (id, name, status, project_path, script_path, duration_ms, scene_count, voice_id, music_path, thumbnail_path, visual_niche, platform, aspect_ratio, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       project.id,
       project.name,
@@ -79,6 +84,8 @@ export class ProjectRepository {
       project.musicPath || null,
       project.thumbnailPath || null,
       project.visualNiche || 'stoic_philosophy',
+      project.platform || 'YOUTUBE',
+      project.aspectRatio || '16:9',
       project.createdAt,
       project.updatedAt
     );
@@ -97,6 +104,9 @@ export class ProjectRepository {
     if (patch.musicPath !== undefined) { fields.push('music_path = ?'); values.push(patch.musicPath); }
     if (patch.thumbnailPath !== undefined) { fields.push('thumbnail_path = ?'); values.push(patch.thumbnailPath); }
     if (patch.visualNiche !== undefined) { fields.push('visual_niche = ?'); values.push(patch.visualNiche); }
+    if (patch.characterLock !== undefined) { fields.push('character_lock = ?'); values.push(patch.characterLock); }
+    if (patch.platform !== undefined) { fields.push('platform = ?'); values.push(patch.platform); }
+    if (patch.aspectRatio !== undefined) { fields.push('aspect_ratio = ?'); values.push(patch.aspectRatio); }
     if (patch.captionStyle !== undefined) { fields.push('caption_style_json = ?'); values.push(JSON.stringify(patch.captionStyle)); }
 
     fields.push('updated_at = ?');

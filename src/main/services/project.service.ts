@@ -1,3 +1,4 @@
+import { AiPromptGeneratorService } from './ai-prompt-generator.service';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +51,7 @@ export class ProjectService {
     return { project, scenes, hasMasterVoice };
   }
 
-  static createProject(payload: CreateProjectPayload): Project {
+  static async createProject(payload: CreateProjectPayload): Promise<Project> {
     const settings = SettingsRepository.get();
     const projectId = uuidv4();
     const now = new Date().toISOString();
@@ -85,6 +86,8 @@ export class ProjectService {
       sceneCount: parseResult.scenes.length,
       voiceId: payload.voiceId || settings.defaultVoiceId,
       visualNiche,
+      platform: payload.platform || 'YOUTUBE',
+      aspectRatio: payload.aspectRatio || (payload.platform === 'FACEBOOK' ? '9:16' : '16:9'),
       createdAt: now,
       updatedAt: now
     };
@@ -103,7 +106,7 @@ export class ProjectService {
       fs.mkdirSync(sceneDirPath, { recursive: true });
 
       const overlayText = '';
-      const prompt = PromptService.buildPrompt(ps.text, undefined, undefined, undefined, visualNiche);
+      const prompt = ps.customPrompt || PromptService.buildPrompt(ps.text, undefined, undefined, undefined, visualNiche, project.aspectRatio);
 
       return {
         id: sceneId,
@@ -132,7 +135,9 @@ export class ProjectService {
     const allBeats: VisualBeat[] = [];
     let lastShot: VisualShotType | undefined = undefined;
 
-    for (const sc of scenesToInsert) {
+    for (let i = 0; i < scenesToInsert.length; i++) {
+      const sc = scenesToInsert[i];
+      const ps = parseResult.scenes[i];
       const beats = VisualBeatPlannerService.planSceneBeats(
         {
           id: sc.id,
@@ -140,10 +145,13 @@ export class ProjectService {
           sceneIndex: sc.sceneIndex,
           scriptText: sc.scriptText,
           durationMs: sc.durationMs,
-          startMs: sc.startMs
+          startMs: sc.startMs,
+          aspectRatio: project.aspectRatio,
+          customPrompt: ps?.customPrompt
         },
         lastShot,
-        visualNiche
+        visualNiche,
+        project.aspectRatio
       );
 
       const folderNum = String(sc.sceneIndex).padStart(4, '0');
@@ -160,6 +168,29 @@ export class ProjectService {
         lastShot = beats[beats.length - 1].shotType;
         // Assign first beat image path as scene fallback
         SceneRepository.update(sc.id, { imagePath: beats[0].imagePath });
+      }
+    }
+
+        // Enrich beats with AI prompts only if beats lack custom prompts
+    const hasAnyAutoBeats = allBeats.some((b) => !b.isCustomPrompt);
+    if (hasAnyAutoBeats) {
+      try {
+        const fullScript = scenesToInsert.map((s) => s.scriptText).join(' ');
+        const characterLock = await AiPromptGeneratorService.deriveCharacterLock(fullScript, visualNiche);
+        if (characterLock) {
+          ProjectRepository.update(project.id, { characterLock });
+          project.characterLock = characterLock;
+        }
+
+        await VisualBeatPlannerService.enrichBeatsWithAiPrompts(
+          allBeats,
+          scenesToInsert,
+          visualNiche,
+          project.aspectRatio,
+          characterLock
+        );
+      } catch (err: any) {
+        console.warn('[ProjectService] AI Prompt enrichment notice:', err.message);
       }
     }
 

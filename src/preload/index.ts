@@ -10,6 +10,8 @@ const api = {
     update: (id: string, patch: Partial<Project>) => ipcRenderer.invoke('projects:update', id, patch),
     autoEdit: (projectId: string) => ipcRenderer.invoke('projects:autoEdit', projectId),
     autoCaption: (projectId: string) => ipcRenderer.invoke('projects:autoCaption', projectId),
+    syncTimeline: (projectId: string) => ipcRenderer.invoke('projects:autoCaption', projectId),
+    syncCaptions: (projectId: string) => ipcRenderer.invoke('projects:autoCaption', projectId),
       updateCaptionStyle: (projectId: string, style: any) => ipcRenderer.invoke('projects:updateCaptionStyle', projectId, style),
     regenerateAllVoice: (projectId: string, voiceId?: string) => ipcRenderer.invoke('projects:regenerateAllVoice', projectId, voiceId)
   },
@@ -120,6 +122,14 @@ const api = {
     showItemInFolder: (path: string) => ipcRenderer.invoke('shell:showItemInFolder', path)
   },
 
+  aiPrompts: {
+    getConfig: () => ipcRenderer.invoke('aiPrompts:getConfig'),
+    checkHealth: () => ipcRenderer.invoke('aiPrompts:checkHealth'),
+    generatePrompt: (params: any) => ipcRenderer.invoke('aiPrompts:generatePrompt', params),
+    saveConfig: (config: any) => ipcRenderer.invoke('aiPrompts:saveConfig', config),
+    resetCircuitBreaker: () => ipcRenderer.invoke('aiPrompts:resetCircuitBreaker')
+  },
+
   pixazo: {
     getConfig: () => ipcRenderer.invoke('pixazo:getConfig'),
     saveConfig: (apiKey: string, model: string, concurrency?: number) => ipcRenderer.invoke('pixazo:saveConfig', apiKey, model, concurrency),
@@ -138,19 +148,44 @@ const api = {
     clearHistory: () => ipcRenderer.invoke('pixazo:clearHistory'),
     openFolder: (filePath?: string) => ipcRenderer.invoke('pixazo:openFolder', filePath),
     reloadEnv: () => ipcRenderer.invoke('pixazo:reloadEnv')
+  },
+  stockMedia: {
+    search: (queryOrOptions: any, source?: string, mediaType?: string) => {
+      const opts = typeof queryOrOptions === 'object'
+        ? queryOrOptions
+        : { query: queryOrOptions, source, mediaType };
+      return ipcRenderer.invoke('stockMedia:search', opts);
+    },
+    downloadToBeat: (item: any, beatId: string, projectId: string) =>
+      ipcRenderer.invoke('stockMedia:downloadToBeat', item, beatId, projectId),
+    generateViralMetadata: (script: string, projectName: string) =>
+      ipcRenderer.invoke('stockMedia:generateViralMetadata', script, projectName),
+    generateCharacterProfile: (script: string) =>
+      ipcRenderer.invoke('stockMedia:generateCharacterProfile', script),
+    scrapeVideosForScript: (script: string, niche?: string, aspectRatio?: '9:16' | '16:9') =>
+      ipcRenderer.invoke('stockMedia:scrapeVideosForScript', script, niche, aspectRatio),
+    generateFacebookViralPack: (script: string, projectName: string, niche?: string) =>
+      ipcRenderer.invoke('stockMedia:generateFacebookViralPack', script, projectName, niche),
+    saveClipLocally: (options: any) =>
+      ipcRenderer.invoke('stockMedia:saveClipLocally', options),
+    selectClipsFolder: () =>
+      ipcRenderer.invoke('stockMedia:selectClipsFolder'),
+    getClipsFolder: () =>
+      ipcRenderer.invoke('stockMedia:getClipsFolder'),
+    getDownloadedClips: (customFolder?: string) =>
+      ipcRenderer.invoke('stockMedia:getDownloadedClips', customFolder),
+    deleteDownloadedClip: (filePath: string) =>
+      ipcRenderer.invoke('stockMedia:deleteDownloadedClip', filePath)
   }
 };
 
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('docuforge', api);
-    contextBridge.exposeInMainWorld('psychoniche', api);
   } catch (error) {
     console.error(error);
   }
 } else {
   // @ts-ignore
   window.docuforge = api;
-  // @ts-ignore
-  window.psychoniche = api;
 }

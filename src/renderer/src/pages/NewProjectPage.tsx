@@ -1,7 +1,7 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../stores/project.store';
-import { EDGE_NEURAL_VOICES, VISUAL_NICHES } from '../../../shared/constants';
+import { EDGE_NEURAL_VOICES } from '../../../shared/constants';
 
 
 export const NewProjectPage: React.FC = () => {
@@ -9,13 +9,34 @@ export const NewProjectPage: React.FC = () => {
   const { createProject, isLoading } = useProjectStore();
 
   const [title, setTitle] = useState('');
-  const [selectedNiche, setSelectedNiche] = useState<string>('stoic_philosophy');
   const [scriptText, setScriptText] = useState('');
   const [voiceId, setVoiceId] = useState('en-US-AndrewMultilingualNeural');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
   const [beatCadence, setBeatCadence] = useState<'dynamic' | 'cinematic'>('dynamic');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Detect paired scenes (Script + Image Prompt)
+  const pairedScenesCount = useMemo(() => {
+    if (!scriptText.trim()) return 0;
+    // Format 1: scene 1 (narration) \n prompt
+    const matches1 = scriptText.match(/scene\s*\d+\s*\([^)]+\)/gi);
+    if (matches1 && matches1.length > 0) return matches1.length;
+
+    // Format 2: [Script] or Script: paired with [Prompt] or Prompt:
+    const matches2 = scriptText.match(/\[?(?:Prompt|Image\s*Prompt)\]?[:.\s]/gi);
+    if (matches2 && matches2.length > 0) return matches2.length;
+
+    // Format 3: Pipe delimiter per line "script | prompt"
+    const lines = scriptText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const pipeLines = lines.filter((l) => {
+      const parts = l.split('|');
+      return parts.length === 2 && parts[0].trim().length > 0 && parts[1].trim().length >= 3;
+    });
+    if (pipeLines.length > 0 && pipeLines.length === lines.length) return pipeLines.length;
+
+    return 0;
+  }, [scriptText]);
 
   // Real-time script intelligence
   const stats = useMemo(() => {
@@ -27,18 +48,30 @@ export const NewProjectPage: React.FC = () => {
     const chars = text.length;
     // ~145 words per minute at 1.0x
     const estSec = Math.max(5, Math.round((words / (145 * voiceSpeed)) * 60));
-    // Estimate ~20-30 words per scene
-    const estScenes = Math.max(1, Math.ceil(words / 24));
-    // Estimate beats (dynamic = 2-3 per scene, cinematic = 1-2)
-    const multiplier = beatCadence === 'dynamic' ? 2.5 : 1.5;
-    const estBeats = Math.max(1, Math.round(estScenes * multiplier));
+    // If paired scenes are present, use exact count
+    const estScenes = pairedScenesCount > 0 ? pairedScenesCount : Math.max(1, Math.ceil(words / 24));
+    // If paired scenes are present, each scene is paired 1:1 with a locked custom prompt
+    const estBeats = pairedScenesCount > 0 ? pairedScenesCount : Math.max(1, Math.round(estSec / 4.5));
 
     return { words, chars, estSec, estScenes, estBeats };
-  }, [scriptText, voiceSpeed, beatCadence]);
+  }, [scriptText, voiceSpeed, beatCadence, pairedScenesCount]);
 
-  const currentNiche = useMemo(() => {
-    return VISUAL_NICHES.find((n) => n.id === selectedNiche) || VISUAL_NICHES[0];
-  }, [selectedNiche]);
+  const handleInsertExample = () => {
+    setTitle('Dawn of Humanity');
+    setScriptText(
+`scene 1 (Early humans struggled against harsh winters in small wandering groups.)
+Cartoon stick figure Stone Age men huddled inside a dark cave, holding a burning torch, flat 2D animation style.
+
+scene 2 (To survive, they developed the first stone hunting weapons.)
+Cartoon stick figure Stone Age man knapping sharp flint tools on a boulder, holding crude stone hammer, flat 2D animation style.
+
+scene 3 (Together, hunters cooperated across snowy plains to track large beasts.)
+Cartoon stick figure Stone Age men tracking animal footprints in snow, holding stone spears, flat 2D animation style.
+
+scene 4 (Back at the shelter, families gathered to cook food and share the warmth of fire.)
+Cartoon stick figure Stone Age people gathered around an open crackling fire cooking food, flat 2D animation style.`
+    );
+  };
 
   const formatEstTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -75,13 +108,13 @@ export const NewProjectPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const projectTitle = title.trim() || `${currentNiche.name} Story ${new Date().toLocaleDateString()}`;
+      const projectTitle = title.trim() || `Story Production ${new Date().toLocaleDateString()}`;
 
       const newProject = await createProject({
         name: projectTitle,
         scriptContent: cleanScript,
         voiceId,
-        visualNiche: selectedNiche
+        visualNiche: 'custom'
       });
 
       if (window.docuforge?.generation?.start) {
@@ -105,7 +138,7 @@ export const NewProjectPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto w-full flex flex-col gap-6 select-none" onKeyDown={handleKeyDown}>
+    <div className="p-10 w-full flex flex-col gap-6 select-none" onKeyDown={handleKeyDown}>
       {/* Top Studio Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-white/[0.06]">
         <div className="flex flex-col gap-1.5">
@@ -114,11 +147,10 @@ export const NewProjectPage: React.FC = () => {
               Fast Story Production
             </span>
             <span className="text-[#918FA1] text-[11px] font-mono flex items-center gap-1.5">
-              <span>16:9 Landscape</span>
+              <span>16:9 Widescreen</span>
               <span>·</span>
-              <span className="text-white font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentNiche.color }}></span>
-                {currentNiche.name}
+              <span className="text-[#4EDEA3] font-semibold flex items-center gap-1">
+                Direct Script & Prompt Mode
               </span>
             </span>
           </div>
@@ -126,7 +158,7 @@ export const NewProjectPage: React.FC = () => {
             <span>Create New Story Production</span>
           </h1>
           <p className="text-xs text-[#C7C4D8]">
-            Input your narrative script and choose your visual niche. The pipeline automatically decomposes scenes, crafts high-fidelity art beats in your chosen style, and synthesizes master narration.
+            Input your spoken narrative script and custom text-to-image prompts. The pipeline synthesizes master voice narration, aligns subtitles, and renders your exact visual prompts with 100% fidelity.
           </p>
         </div>
 
@@ -153,97 +185,6 @@ export const NewProjectPage: React.FC = () => {
           <span>{errorMessage}</span>
         </div>
       )}
-      {/* Visual Niche & Aesthetic Selector */}
-      <div className="flex flex-col gap-3 p-5 rounded-2xl bg-[#121419] border border-white/[0.06] shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
-              style={{ backgroundColor: `${currentNiche.color}20`, color: currentNiche.color }}
-            >
-              <span className="material-symbols-outlined text-[20px]">{currentNiche.icon}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#F0F0F3] font-mono flex items-center gap-2">
-                <span>Select Visual Niche & Art Style</span>
-                {currentNiche.badge && (
-                  <span
-                    className="text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-tight"
-                    style={{
-                      backgroundColor: `${currentNiche.color}15`,
-                      color: currentNiche.color,
-                      border: `1px solid ${currentNiche.color}35`
-                    }}
-                  >
-                    {currentNiche.badge}
-                  </span>
-                )}
-              </span>
-              <span className="text-[11px] text-[#918FA1]">
-                Active: <strong className="text-[#F0F0F3]">{currentNiche.name}</strong> — {currentNiche.description}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Niche Grid Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-          {VISUAL_NICHES.map((niche) => {
-            const isSelected = niche.id === selectedNiche;
-            return (
-              <button
-                key={niche.id}
-                type="button"
-                onClick={() => setSelectedNiche(niche.id)}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer relative overflow-hidden group ${
-                  isSelected
-                    ? 'bg-gradient-to-b from-white/[0.08] to-transparent border-[#8781FF] shadow-md shadow-[#8781FF]/10 ring-1 ring-[#8781FF]'
-                    : 'bg-[#0C0E11] hover:bg-[#181B22] border-white/[0.06] hover:border-white/[0.15]'
-                }`}
-              >
-                {/* Top Row: Icon + Badge */}
-                <div className="flex items-center justify-between">
-                  <div
-                    className="w-6 h-6 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-                    style={{ backgroundColor: `${niche.color}20`, color: niche.color }}
-                  >
-                    <span className="material-symbols-outlined text-[15px]">{niche.icon}</span>
-                  </div>
-                  {niche.badge && (
-                    <span
-                      className="text-[8px] font-mono px-1 py-0.2 rounded font-bold uppercase tracking-tighter"
-                      style={{
-                        backgroundColor: `${niche.color}15`,
-                        color: niche.color
-                      }}
-                    >
-                      {niche.badge.split(' ')[0]}
-                    </span>
-                  )}
-                </div>
-
-                {/* Name */}
-                <span className={`text-[11px] font-semibold truncate ${isSelected ? 'text-white font-bold' : 'text-[#C7C4D8] group-hover:text-white'}`}>
-                  {niche.name}
-                </span>
-
-                {/* Category */}
-                <span className="text-[9px] font-mono text-[#7D7A8B] uppercase tracking-wider truncate">
-                  {niche.category}
-                </span>
-
-                {/* Active Indicator Strip */}
-                {isSelected && (
-                  <div
-                    className="absolute top-0 left-0 right-0 h-[2px]"
-                    style={{ backgroundColor: niche.color }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Main Grid Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -387,9 +328,24 @@ export const NewProjectPage: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[16px] text-[#8781FF]">edit_note</span>
-                <span className="text-xs font-semibold text-[#E2E2E6]">Story Script</span>
+                <span className="text-xs font-semibold text-[#E2E2E6]">Story Script & Prompts</span>
+                {pairedScenesCount > 0 && (
+                  <span className="text-[10px] font-mono text-[#4EDEA3] bg-[#4EDEA3]/15 px-2 py-0.5 rounded-full border border-[#4EDEA3]/30 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#4EDEA3] animate-pulse"></span>
+                    <span>{pairedScenesCount} Custom Prompts Locked</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleInsertExample}
+                  className="h-7 px-2.5 rounded-lg bg-white/[0.04] hover:bg-[#8781FF]/20 text-[#C7C4D8] hover:text-[#8781FF] text-[11px] font-mono transition-colors flex items-center gap-1 cursor-pointer border border-white/[0.06]"
+                  title="Insert Script + Custom Prompt template example"
+                >
+                  <span className="material-symbols-outlined text-[13px]">lightbulb</span>
+                  <span>Insert Example</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleUploadFile}
@@ -415,16 +371,35 @@ export const NewProjectPage: React.FC = () => {
             <textarea
               value={scriptText}
               onChange={(e) => setScriptText(e.target.value)}
-              placeholder="Paste or write your story script here...
+              placeholder={`Paste or write your story script and image prompts here...
 
-Example:
-Summer in Kyoto had arrived with quiet rain. In the hillside teahouse, steam curled from porcelain cups as lanterns flickered in the soft twilight. An old traveler smiled, sharing memories of forgotten river spirits..."
+Supported Modes:
+1. Script + Image Prompts:
+   scene 1 (Early humans struggled against harsh winters in small wandering groups.)
+   Cartoon stick figure Stone Age men huddled inside a dark cave, holding a burning torch, flat 2D animation style.
+
+   scene 2 (To survive, they developed the first stone hunting weapons.)
+   Cartoon stick figure Stone Age man knapping sharp flint tools on a boulder, holding crude stone hammer, flat 2D animation style.
+
+2. Tag Style:
+   [Script] Spoken narration line
+   [Prompt] Your text-to-image prompt here
+
+3. Single Line:
+   Spoken narration line | Your text-to-image prompt here
+
+4. Standard Narration Script:
+   Paste narration text normally. Visual scenes and prompts are created automatically.`}
               className="flex-1 w-full bg-transparent text-[#E2E2E6] text-xs font-mono leading-relaxed resize-none focus:outline-none placeholder:text-[#525060]"
               rows={14}
             />
 
             <div className="flex items-center justify-between pt-2 border-t border-white/[0.04] text-[10px] font-mono text-[#7D7A8B]">
-              <span>Pro Tip: Press Ctrl + Enter anywhere to start generating immediately.</span>
+              <span>
+                {pairedScenesCount > 0
+                  ? `✨ Custom prompt mode active: ${pairedScenesCount} scenes will use your exact prompts with 0 AI hallucinations.`
+                  : 'Pro Tip: You can input Script Only, or pair Script + Prompt for 100% visual consistency.'}
+              </span>
               <span>{stats.chars} characters</span>
             </div>
           </div>

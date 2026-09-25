@@ -7,7 +7,14 @@ export function getMediaUrl(filePath?: string | null, cacheBust?: boolean | numb
     return filePath;
   }
   const cleanPath = filePath.replace(/\\/g, '/');
-  const t = cacheBust === true ? Date.now() : cacheBust || '';
-  const query = t ? `&t=${t}` : '';
+  // Only append cache-busting parameter if an explicit version number or timestamp string was provided.
+  // Never use Date.now() when cacheBust is a boolean true, because that forces a new URL on every React re-render,
+  // causing Chromium to abort and flash/unload images and videos.
+  let query = '';
+  if (typeof cacheBust === 'number') {
+    query = `&v=${cacheBust}`;
+  } else if (typeof cacheBust === 'string' && cacheBust.length > 0) {
+    query = `&v=${encodeURIComponent(cacheBust)}`;
+  }
   return `media://file?path=${encodeURIComponent(cleanPath)}${query}`;
 }

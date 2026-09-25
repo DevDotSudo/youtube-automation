@@ -6,12 +6,11 @@ import path from 'path';
 export class SettingsRepository {
   static getDefaultSettings(): AppSettings {
     const docs = (app && typeof app.getPath === 'function') ? app.getPath('documents') : path.join(process.env.USERPROFILE || 'C:/Users/Davie', 'Documents');
-    const defaultWorkspace = path.join(docs, 'GhibliForge');
+    const defaultWorkspace = path.join(docs, 'SudoAutomation');
     return {
       workspacePath: defaultWorkspace,
       defaultVoiceId: 'en-US-AndrewMultilingualNeural',
       pixazoResolution: '1280x720',
-      parrotAiResolution: '1280x720',
       defaultMotion: MotionType.STATIC,
       subtitleMode: 'BURN',
       musicVolumePercent: 12,

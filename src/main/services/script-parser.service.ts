@@ -81,8 +81,8 @@ export class ScriptParserService {
         // Pacing checks: 4 to 6s target for explainer
         if (durationMs < 1000) {
           warnings.push(`Scene ${sceneIndex}: Duration (${(durationMs / 1000).toFixed(1)}s) is below 1.0s minimum`);
-        } else if (durationMs > 8000) {
-          warnings.push(`Scene ${sceneIndex}: Duration (${(durationMs / 1000).toFixed(1)}s) exceeds target 4-6s explainer pacing`);
+        } else if (durationMs > 25000) {
+          warnings.push(`Scene ${sceneIndex}: Duration (${(durationMs / 1000).toFixed(1)}s) is long; images will dynamically alternate every 3-6s`);
         }
 
         scenes.push({
@@ -94,29 +94,51 @@ export class ScriptParserService {
         });
       }
     } else {
-      // Resilient fallback for plain line-by-line scripts without timestamps
-      const lines = rawContent.split(/\r?\n/);
-      let currentOffsetMs = 0;
-      let sceneIndex = 1;
-      const filteredLines = lines
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0 && !/^\d+$/.test(l));
+      // Check first if the user provided paired Script + Text-to-Image prompts
+      const pairedScenes = this.parsePairedScriptAndPrompts(rawContent);
 
-      for (const line of filteredLines) {
-        const wordCount = line.split(/\s+/).length;
-        const durationMs = Math.max(3000, Math.min(6500, Math.round(wordCount * 380)));
-        const startMs = currentOffsetMs;
-        const endMs = startMs + durationMs;
-        currentOffsetMs = endMs;
+      if (pairedScenes && pairedScenes.length > 0) {
+        let currentOffsetMs = 0;
+        for (let i = 0; i < pairedScenes.length; i++) {
+          const item = pairedScenes[i];
+          const wordCount = item.text.split(/\s+/).filter(Boolean).length;
+          const durationMs = Math.max(3000, Math.round(wordCount * 380));
+          const startMs = currentOffsetMs;
+          const endMs = startMs + durationMs;
+          currentOffsetMs = endMs;
 
-        scenes.push({
-          index: sceneIndex,
-          startMs,
-          endMs,
-          durationMs,
-          text: line
-        });
-        sceneIndex++;
+          scenes.push({
+            index: i + 1,
+            startMs,
+            endMs,
+            durationMs,
+            text: item.text,
+            customPrompt: item.customPrompt
+          });
+        }
+      } else {
+        // Natural scene segmentation:
+        // Every line from start to full stop or comma (when clause has >= 5 words) is a separate scene.
+        const segments = this.splitScriptIntoNaturalScenes(rawContent);
+        let currentOffsetMs = 0;
+        let sceneIndex = 1;
+
+        for (const seg of segments) {
+          const wordCount = seg.split(/\s+/).filter(Boolean).length;
+          const durationMs = Math.max(3000, Math.round(wordCount * 380));
+          const startMs = currentOffsetMs;
+          const endMs = startMs + durationMs;
+          currentOffsetMs = endMs;
+
+          scenes.push({
+            index: sceneIndex,
+            startMs,
+            endMs,
+            durationMs,
+            text: seg
+          });
+          sceneIndex++;
+        }
       }
     }
 
@@ -129,5 +151,135 @@ export class ScriptParserService {
       avgDurationMs,
       warnings
     };
+  }
+
+  /**
+   * Detects and parses paired Script + Text-to-Image Prompts.
+   * Supports:
+   * 1. scene 1 (Script line) \n Prompt line
+   * 2. Scene 1: \n Script: ... \n Prompt: ...
+   * 3. [Script] ... \n [Prompt] ...
+   * 4. Script line | Prompt line
+   */
+  static parsePairedScriptAndPrompts(rawText: string): Array<{ text: string; customPrompt: string }> | null {
+    if (!rawText || !rawText.trim()) return null;
+
+    const cleanSpoken = (t: string) =>
+      t.replace(/^(?:scene\s*\d+[:.\s-]*|\d+[\.:\s-]+)/i, '')
+       .replace(/^\[?(?:Script|Narration)\]?[:.\s-]*/i, '')
+       .trim();
+
+    // Format 1: scene 1 (line of script) \n prompt
+    const format1Matches: Array<{ text: string; customPrompt: string }> = [];
+    const format1Regex = /(?:^|\n)\s*scene\s*\d+\s*\(([^)]+)\)\s*:?\s*([^\n\r]+(?:\n(?!\s*scene\s*\d+\s*\()[^\n\r]+)*)/gi;
+    let match: RegExpExecArray | null;
+    while ((match = format1Regex.exec(rawText)) !== null) {
+      const scriptText = cleanSpoken(match[1]);
+      const promptText = match[2].trim();
+      if (scriptText && promptText) {
+        format1Matches.push({ text: scriptText, customPrompt: promptText });
+      }
+    }
+    if (format1Matches.length > 0) return format1Matches;
+
+    // Format 2: Explicit [Script]/Script: paired with [Prompt]/Prompt:
+    const format2Matches: Array<{ text: string; customPrompt: string }> = [];
+    const format2Regex = /(?:^|\n)\s*(?:scene\s*\d+[:.\s]*)?\[?(?:Script|Narration)\]?[:.\s]+([^\n\r]+(?:\n(?!\s*\[?(?:Prompt|Image\s*Prompt)\]?[:.\s])[^\n\r]+)*)\s*\[?(?:Prompt|Image\s*Prompt)\]?[:.\s]+([^\n\r]+(?:\n(?!\s*(?:scene\s*\d+|\[?(?:Script|Narration)\]?[:.\s]))[^\n\r]+)*)/gi;
+    while ((match = format2Regex.exec(rawText)) !== null) {
+      const scriptText = cleanSpoken(match[1]);
+      const promptText = match[2].trim();
+      if (scriptText && promptText) {
+        format2Matches.push({ text: scriptText, customPrompt: promptText });
+      }
+    }
+    if (format2Matches.length > 0) return format2Matches;
+
+    // Format 3: Pipe delimiter per line (e.g. "Scene 1: Spoken script | Text-to-image prompt")
+    const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const pipeMatches: Array<{ text: string; customPrompt: string }> = [];
+    let pipeValid = true;
+    if (lines.length > 0) {
+      for (const line of lines) {
+        const parts = line.split('|');
+        if (parts.length === 2 && parts[0].trim().length > 0 && parts[1].trim().length >= 3) {
+          pipeMatches.push({ text: cleanSpoken(parts[0]), customPrompt: parts[1].trim() });
+        } else {
+          pipeValid = false;
+          break;
+        }
+      }
+      if (pipeValid && pipeMatches.length > 0) return pipeMatches;
+    }
+
+    // Format 4: Scene blocks with Narration text followed by Prompt: line
+    const format4Matches: Array<{ text: string; customPrompt: string }> = [];
+    const sceneBlocks = rawText.split(/(?:^|\n)(?=scene\s*\d+[:.\s]|\d+[\.:\s-]+)/i).map((b) => b.trim()).filter(Boolean);
+    if (sceneBlocks.length > 0) {
+      for (const block of sceneBlocks) {
+        const pMatch = block.match(/^(.*?)(?:\[?(?:Prompt|Image\s*Prompt)\]?[:.\s]+)(.+)$/is);
+        if (pMatch) {
+          const sText = cleanSpoken(pMatch[1]);
+          const pText = pMatch[2].trim();
+          if (sText && pText) {
+            format4Matches.push({ text: sText, customPrompt: pText });
+          }
+        }
+      }
+      if (format4Matches.length === sceneBlocks.length && format4Matches.length > 0) {
+        return format4Matches;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Splits plain script text into natural scenes:
+   * 1. Every full stop, exclamation mark, or question mark forms a new scene.
+   * 2. Commas also split scenes IF the preceding clause has 5 or more words.
+   *    If the comma is after 1-4 words, it remains part of the current scene.
+   */
+  static splitScriptIntoNaturalScenes(rawText: string): string[] {
+    const lines = (rawText || '').split(/\r?\n/);
+    const scenes: string[] = [];
+
+    for (const rawLine of lines) {
+      const cleanLine = rawLine.trim();
+      if (!cleanLine || /^\d+$/.test(cleanLine)) continue;
+
+      // Split into sentences on full stops, exclamation marks, question marks
+      const sentences = cleanLine.split(/(?<=[.!?])\s+/).filter(Boolean);
+
+      for (const sent of sentences) {
+        const commaSplits = sent.split(/,\s*/);
+        if (commaSplits.length <= 1) {
+          if (sent.trim()) scenes.push(sent.trim());
+          continue;
+        }
+
+        let currentChunk = '';
+        for (let i = 0; i < commaSplits.length; i++) {
+          const piece = commaSplits[i].trim();
+          if (!piece) continue;
+
+          if (!currentChunk) {
+            currentChunk = piece;
+          } else {
+            const wordCount = currentChunk.split(/\s+/).filter(Boolean).length;
+            if (wordCount >= 5) {
+              scenes.push(currentChunk.trim());
+              currentChunk = piece;
+            } else {
+              currentChunk = `${currentChunk}, ${piece}`;
+            }
+          }
+        }
+        if (currentChunk.trim()) {
+          scenes.push(currentChunk.trim());
+        }
+      }
+    }
+
+    return scenes.filter((s) => s.length > 0);
   }
 }

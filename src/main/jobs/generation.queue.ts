@@ -1,3 +1,4 @@
+import { AiPromptGeneratorService } from '../services/ai-prompt-generator.service';
 import path from 'path';
 import fs from 'fs';
 import { BrowserWindow } from 'electron';
@@ -7,10 +8,10 @@ import { VisualBeatRepository } from '../database/repositories/visual-beat.repos
 import { ImageService } from '../services/image.service';
 import { getPixazoConcurrency } from '../env';
 import { TTSService } from '../services/tts.service';
-import { AutoCaptionService } from '../services/auto-caption.service';
 import { RenderService } from '../services/render.service';
 import { AutoEditService } from '../services/auto-edit.service';
 import { VisualBeatPlannerService } from '../services/visual-beat-planner.service';
+import { StockMediaService } from '../services/stock-media.service';
 import { AssetStatus, ProjectStatus } from '../../shared/enums';
 import { Scene, VisualBeat } from '../../shared/types';
 
@@ -118,6 +119,9 @@ export class GenerationQueue {
 
     // Image Worker: Generates breathtaking Studio Ghibli hand-painted anime scenes with multi-pass resilience
     const runImageWorker = async () => {
+      const isVertical = project.aspectRatio === '9:16';
+      const imgWidth = isVertical ? 1080 : 1920;
+      const imgHeight = isVertical ? 1920 : 1080;
       let freshBeats = VisualBeatRepository.listByProjectId(projectId);
       allBeats = freshBeats;
 
@@ -156,7 +160,7 @@ export class GenerationQueue {
             const statusText = `Synthesizing Visual Beat ${beat.beatIndex + 1} of Scene ${parentScene.sceneIndex} (Parallel 5x)`;
             emitProgress(audioDoneCount, beatDoneCount, parentScene, beat, statusText);
 
-            await ImageService.generateWithRetry(beat.imagePrompt, beat.imagePath!);
+            await ImageService.generateWithRetry(beat.imagePrompt, beat.imagePath!, undefined, imgWidth, imgHeight);
 
             if (!fs.existsSync(beat.imagePath!) || fs.statSync(beat.imagePath!).size < 500) {
               throw new Error(`Generated image missing or invalid at ${beat.imagePath}`);
@@ -205,9 +209,27 @@ export class GenerationQueue {
             const parentScene = scenes.find((s) => s.id === unreadyBeat.sceneId) || scenes[0];
             emitProgress(audioDoneCount, beatDoneCount, parentScene, unreadyBeat, `Healing missing image for Scene ${parentScene.sceneIndex}, Beat ${unreadyBeat.beatIndex + 1}...`);
 
-            const fallbackPrompt = ImageService.buildResilientFallbackPrompt(unreadyBeat.visualConcept, parentScene.scriptText, project.visualNiche);
+            // If the visual beat already has an AI-generated prompt, use it! Don't try another!
+            let promptToUse = unreadyBeat.imagePrompt;
+            if (!promptToUse || promptToUse.trim().length < 10) {
+              try {
+                const aiPromptRes = await AiPromptGeneratorService.generatePrompt({
+                  scriptLine: parentScene.scriptText,
+                  niche: project.visualNiche,
+                  shotType: unreadyBeat.shotType,
+                  aspectRatio: project.aspectRatio,
+                  characterLock: project.characterLock
+                });
+                promptToUse = aiPromptRes.prompt;
+                unreadyBeat.imagePrompt = promptToUse;
+                VisualBeatRepository.update(unreadyBeat.id, { imagePrompt: promptToUse });
+              } catch {
+                promptToUse = ImageService.buildResilientFallbackPrompt(unreadyBeat.visualConcept, parentScene.scriptText, project.visualNiche);
+              }
+            }
+
             try {
-              await ImageService.generateWithRetry(fallbackPrompt, unreadyBeat.imagePath!);
+              await ImageService.generateWithRetry(promptToUse, unreadyBeat.imagePath!, undefined, imgWidth, imgHeight);
               if (fs.existsSync(unreadyBeat.imagePath!) && fs.statSync(unreadyBeat.imagePath!).size > 500) {
                 VisualBeatRepository.update(unreadyBeat.id, {
                   imagePath: unreadyBeat.imagePath,
@@ -224,28 +246,100 @@ export class GenerationQueue {
         await Promise.all(healWorkers);
       }
 
-      // Pass 4: Emergency Gate Guarantee
-      // If any beat still lacks an image after 3 generation passes, recover from sibling beat so NO BEAT IS EVER MISSING
+      // Pass 4: Final Direct Generation Pass (Zero Donor Copying - Every Beat Must Be Unique)
       freshBeats = VisualBeatRepository.listByProjectId(projectId);
       const remainingUnready = freshBeats.filter((b) => !isBeatImageValid(b));
       if (remainingUnready.length > 0 && !this.isCancelled) {
-        console.warn(`[ImageWorker] Emergency recovery for ${remainingUnready.length} unfulfilled beats to ensure 100% completion...`);
-        const validDonor = freshBeats.find((b) => isBeatImageValid(b));
+        console.warn(`[ImageWorker] Final direct synthesis pass for ${remainingUnready.length} unfulfilled beats...`);
         for (const unreadyBeat of remainingUnready) {
-          const sceneDonor = freshBeats.find((b) => b.sceneId === unreadyBeat.sceneId && isBeatImageValid(b)) || validDonor;
-          if (sceneDonor && sceneDonor.imagePath && unreadyBeat.imagePath) {
-            try {
-              fs.copyFileSync(sceneDonor.imagePath, unreadyBeat.imagePath);
+          if (this.isCancelled) break;
+          const parentScene = scenes.find((s) => s.id === unreadyBeat.sceneId) || scenes[0];
+          try {
+            emitProgress(audioDoneCount, beatDoneCount, parentScene, unreadyBeat, `Final synthesis pass for Scene ${parentScene.sceneIndex}, Beat ${unreadyBeat.beatIndex + 1}...`);
+            await ImageService.generateWithRetry(unreadyBeat.imagePrompt, unreadyBeat.imagePath!, undefined, imgWidth, imgHeight);
+            if (fs.existsSync(unreadyBeat.imagePath!) && fs.statSync(unreadyBeat.imagePath!).size > 500) {
               VisualBeatRepository.update(unreadyBeat.id, {
                 imagePath: unreadyBeat.imagePath,
                 generationStatus: 'READY'
               });
               beatDoneCount++;
-              console.log(`[ImageWorker] Recovered beat ${unreadyBeat.id} from donor ${sceneDonor.id}`);
-            } catch (copyErr) {
-              console.error(`[ImageWorker] Failed copying donor image for beat ${unreadyBeat.id}:`, copyErr);
             }
+          } catch (genErr) {
+            console.error(`[ImageWorker] Final synthesis pass failed for beat ${unreadyBeat.id}:`, genErr);
+            VisualBeatRepository.update(unreadyBeat.id, { generationStatus: 'FAILED' });
           }
+        }
+      }
+
+      // Final synchronization of parent scene statuses
+      freshBeats = VisualBeatRepository.listByProjectId(projectId);
+      for (const scene of scenes) {
+        const sceneBeats = freshBeats.filter((b) => b.sceneId === scene.id);
+        const firstReady = sceneBeats.find((b) => isBeatImageValid(b));
+        if (firstReady && firstReady.imagePath) {
+          SceneRepository.update(scene.id, {
+            imagePath: firstReady.imagePath,
+            imageStatus: AssetStatus.READY
+          });
+        }
+      }
+    };
+
+    // Facebook 100% Video B-Roll Worker:
+    // Strictly NO static images. Scrapes & downloads vertical 9:16 video clips from Pinterest and internet sources based on scene & beat scripts.
+    const runFacebookVideoWorker = async () => {
+      let freshBeats = VisualBeatRepository.listByProjectId(projectId);
+      allBeats = freshBeats;
+      const usedVideoUrls = new Set<string>();
+
+      for (let i = 0; i < freshBeats.length; i++) {
+        if (this.isCancelled) break;
+        while (this.isPaused) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+
+        const beat = freshBeats[i];
+        const parentScene = scenes.find((s) => s.id === beat.sceneId) || scenes[0];
+        const folderNum = String(parentScene.sceneIndex).padStart(4, '0');
+        const beatsDir = path.join(project.projectPath, 'scenes', folderNum, 'beats');
+        fs.mkdirSync(beatsDir, { recursive: true });
+
+        // Skip if beat already has a valid video downloaded
+        if (isBeatImageValid(beat) && beat.imagePath && beat.imagePath.endsWith('.mp4')) {
+          beatDoneCount++;
+          continue;
+        }
+
+        VisualBeatRepository.update(beat.id, { generationStatus: 'GENERATING' });
+        const statusText = `Scraping 9:16 Video B-Roll for Beat ${i + 1} of Scene ${parentScene.sceneIndex} from script...`;
+        emitProgress(audioDoneCount, beatDoneCount, parentScene, beat, statusText);
+
+        try {
+          // Pass the exact narration script text line and global beat index 'i' with used tracker
+          const narrationText = parentScene.scriptText || beat.visualConcept || '';
+          const videoPath = await StockMediaService.scrapeAndDownloadVideoForBeat(
+            narrationText,
+            project.visualNiche,
+            beatsDir,
+            i,
+            usedVideoUrls
+          );
+
+          VisualBeatRepository.update(beat.id, {
+            imagePath: videoPath,
+            generationStatus: 'READY'
+          });
+          beatDoneCount++;
+        } catch (err: any) {
+          console.error(`[FacebookVideoWorker] Failed scraping video for Beat ${beat.id}:`, err);
+          VisualBeatRepository.update(beat.id, { generationStatus: 'FAILED' });
+        }
+
+        const updatedBeat = VisualBeatRepository.getById(beat.id);
+        const updatedScene = SceneRepository.getById(parentScene.id);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (updatedBeat) mainWindow.webContents.send('beat:updated', updatedBeat);
+          if (updatedScene) mainWindow.webContents.send('scene:updated', updatedScene);
         }
       }
 
@@ -287,74 +381,85 @@ export class GenerationQueue {
       for (const scene of scenes) {
         SceneRepository.update(scene.id, { audioStatus: AssetStatus.GENERATING });
       }
-      emitProgress(0, beatDoneCount, scenes[0], undefined, 'Synthesizing uncut continuous narration...');
+      emitProgress(0, beatDoneCount, scenes[0], undefined, 'Synthesizing voice narration for scenes...');
 
       try {
-        // 1. Combine all scene scripts into complete unbroken narrative text (NO CUTS!)
-        const fullScript = scenes
-          .map((s) => s.scriptText.trim())
-          .filter(Boolean)
-          .join(' ');
+        console.log(`[GenerationQueue] Synthesizing scene narration concurrently for project ${projectId} (${scenes.length} scenes)`);
 
-        // 2. Synthesize speech as ONE uncut continuous audio stream
-        console.log(`[GenerationQueue] Synthesizing uncut narration for project ${projectId} (${fullScript.length} chars)`);
-        const { totalDurationMs } = await TTSService.generateUncutContinuousNarration(
-          fullScript,
-          voiceModel,
-          masterVoicePath
-        );
+        // 1. Synthesize audio for all scenes in parallel with a concurrency pool of up to 3 workers
+        const projectPath = project.projectPath;
+        const CONCURRENCY = Math.min(3, scenes.length);
+        const sceneAudioResults: { finalWavPath: string; durationMs: number }[] = new Array(scenes.length);
+        let nextSceneIdx = 0;
+        let completedAudioCount = 0;
 
-        // 3. Run faster-whisper Auto-Captioning to align scenes & words with exact speech timestamps
-        emitProgress(Math.floor(scenes.length / 2), beatDoneCount, scenes[0], undefined, 'Auto-captioning speech & aligning timeline...');
-        console.log(`[GenerationQueue] Running auto-caption alignment on ${masterVoicePath}...`);
-        const alignResult = await AutoCaptionService.alignScenesToAudio(
-          masterVoicePath,
-          scenes
-        );
+        async function audioWorker() {
+          while (nextSceneIdx < scenes.length) {
+            const idx = nextSceneIdx++;
+            const scene = scenes[idx];
+            emitProgress(completedAudioCount, beatDoneCount, scene, undefined, `Synthesizing narration for Scene ${scene.sceneIndex} of ${scenes.length}...`);
 
-        console.log(`[GenerationQueue] Auto-caption aligned ${alignResult.scenes.length} scenes (total duration: ${alignResult.totalDurationMs}ms)`);
+            const folderNum = String(scene.sceneIndex).padStart(4, '0');
+            const sceneDir = path.join(projectPath, 'scenes', folderNum);
 
-        // Persist alignment.json to disk for subtitle generators and external editors
-        const subDir = path.join(project.projectPath, 'subtitles');
-        fs.mkdirSync(subDir, { recursive: true });
-        fs.writeFileSync(path.join(subDir, 'alignment.json'), JSON.stringify(alignResult, null, 2), 'utf8');
+            const result = await TTSService.generateSceneNarration(
+              scene.scriptText,
+              voiceModel,
+              sceneDir,
+              scene.durationMs,
+              scene.voiceSpeed || 1.0
+            );
 
-        // 4. Update each scene with exact millisecond-accurate auto-caption boundaries and word timestamps
+            sceneAudioResults[idx] = result;
+            completedAudioCount++;
+            emitProgress(completedAudioCount, beatDoneCount, scene, undefined, `Scene ${scene.sceneIndex} narration ready (${completedAudioCount}/${scenes.length})`);
+          }
+        }
+
+        const workers = Array.from({ length: CONCURRENCY }, () => audioWorker());
+        await Promise.all(workers);
+
+        // 2. Align cumulative timeline and visual beats in exact sequential order
+        let cumulativeStartMs = 0;
+        const sceneWavPaths: string[] = [];
+
         for (let i = 0; i < scenes.length; i++) {
           const scene = scenes[i];
-          const aligned = alignResult.scenes.find((as) => as.id === scene.id || as.sceneIndex === scene.sceneIndex);
+          const { finalWavPath, durationMs } = sceneAudioResults[i];
+          sceneWavPaths.push(finalWavPath);
 
-          const startMs = aligned ? aligned.startMs : (i === 0 ? 0 : scenes[i - 1].endMs);
-          const endMs = aligned ? aligned.endMs : (startMs + 4000);
-          const finalDurationMs = Math.max(1000, endMs - startMs);
+          const startMs = cumulativeStartMs;
+          const endMs = cumulativeStartMs + durationMs;
+          cumulativeStartMs = endMs;
 
           SceneRepository.update(scene.id, {
             startMs,
             endMs,
-            durationMs: finalDurationMs,
-            audioPath: masterVoicePath,
-            audioDurationMs: finalDurationMs,
+            durationMs,
+            audioPath: finalWavPath,
+            audioDurationMs: durationMs,
             audioStatus: AssetStatus.READY,
             captionText: scene.scriptText,
-            captionEnabled: true,
-            words: aligned?.words || [],
-            speechStartMs: aligned?.speechStartMs ?? startMs,
-            speechEndMs: aligned?.speechEndMs ?? endMs
+            captionEnabled: false
           });
 
-          // Re-align Visual Beat timings for this scene to match the EXACT audio duration (3-5s pacing)
+          // Re-align Visual Beat timings for this scene to match the EXACT audio duration with zero drift
           const currentBeats = VisualBeatRepository.listBySceneId(scene.id);
+          const hasCustom = currentBeats.some((b) => b.isCustomPrompt) || Boolean(scene.imagePrompt);
+          const customPromptText = currentBeats.find((b) => b.isCustomPrompt)?.imagePrompt || scene.imagePrompt;
+
           const planned = VisualBeatPlannerService.planSceneBeats({
             id: scene.id,
             projectId,
             sceneIndex: scene.sceneIndex,
             scriptText: scene.scriptText,
-            durationMs: finalDurationMs,
-            startMs
-          }, undefined, project.visualNiche);
+            durationMs,
+            startMs,
+            aspectRatio: project.aspectRatio,
+            customPrompt: hasCustom ? customPromptText : undefined
+          }, undefined, project.visualNiche, project.aspectRatio);
 
           if (currentBeats.length === planned.length && currentBeats.length > 0) {
-            // Update timings in-place to keep IDs completely stable
             for (let bIdx = 0; bIdx < planned.length; bIdx++) {
               VisualBeatRepository.update(currentBeats[bIdx].id, {
                 startOffsetMs: planned[bIdx].startOffsetMs,
@@ -363,12 +468,10 @@ export class GenerationQueue {
                 shotType: planned[bIdx].shotType,
                 visualConcept: planned[bIdx].visualConcept,
                 environmentDescription: planned[bIdx].environmentDescription,
-                imagePrompt: planned[bIdx].imagePrompt
+                imagePrompt: currentBeats[bIdx].isCustomPrompt ? currentBeats[bIdx].imagePrompt : planned[bIdx].imagePrompt
               });
             }
           } else {
-            // Beat count adjusted to strictly enforce 3-5s duration
-            // Preserve existing ready image files from disk if available
             for (let bIdx = 0; bIdx < planned.length; bIdx++) {
               if (bIdx < currentBeats.length) {
                 const cb = currentBeats[bIdx];
@@ -391,18 +494,13 @@ export class GenerationQueue {
           if (updatedScene) emitProgress(audioDoneCount, beatDoneCount, updatedScene);
         }
 
-        // 5. Update project duration
-        const finalProjectDuration = alignResult.totalDurationMs || totalDurationMs;
-        ProjectRepository.update(projectId, {
-          durationMs: finalProjectDuration
-        });
+        // 2. Build continuous master voice track from exact scene audio clips
+        await TTSService.buildMasterContinuousVoice(sceneWavPaths, masterVoicePath);
 
-        // 6. Generate synchronized ASS and SRT subtitle files
-        try {
-          RenderService.generateAss(projectId);
-        } catch (subErr) {
-          console.warn('[GenerationQueue] Auto-caption subtitle export warning:', subErr);
-        }
+        // 3. Update project duration to exact total milliseconds
+        ProjectRepository.update(projectId, {
+          durationMs: cumulativeStartMs
+        });
 
         // Refresh allBeats reference after audio alignment
         allBeats = VisualBeatRepository.listByProjectId(projectId);
@@ -441,7 +539,12 @@ export class GenerationQueue {
 
       // 3. Generate visual beat illustrations with Pixazo AI sequentially
       if (!this.isCancelled) {
-        await runImageWorker();
+        if (project.platform === 'FACEBOOK') {
+          console.log('[GenerationQueue] Running Facebook Automation 100% Video B-Roll Worker (Zero Static Images)...');
+          await runFacebookVideoWorker();
+        } else {
+          await runImageWorker();
+        }
       }
 
       // 4. Automated Background Auto-Editing Pipeline with STRICT IMAGE COMPLETION GATE:
@@ -459,15 +562,21 @@ export class GenerationQueue {
         });
 
         if (missingOnDisk.length > 0) {
-          console.error(`[GenerationQueue] Strict Gate Alert: ${missingOnDisk.length} beats were unfulfilled. Enforcing emergency resolution...`);
-          const donor = finalVerifiedBeats.find((b) => b.imagePath && fs.existsSync(b.imagePath) && fs.statSync(b.imagePath).size > 500);
+          console.warn(`[GenerationQueue] Strict Gate Alert: ${missingOnDisk.length} beats missing images. Running direct generation...`);
           for (const mb of missingOnDisk) {
-            if (donor && donor.imagePath && mb.imagePath) {
-              fs.copyFileSync(donor.imagePath, mb.imagePath);
-              VisualBeatRepository.update(mb.id, {
-                generationStatus: 'READY',
-                imagePath: mb.imagePath
-              });
+            if (this.isCancelled) break;
+            try {
+              const isGateVert = project.aspectRatio === '9:16';
+              await ImageService.generateWithRetry(mb.imagePrompt, mb.imagePath!, undefined, isGateVert ? 1080 : 1920, isGateVert ? 1920 : 1080);
+              if (fs.existsSync(mb.imagePath!) && fs.statSync(mb.imagePath!).size > 500) {
+                VisualBeatRepository.update(mb.id, {
+                  generationStatus: 'READY',
+                  imagePath: mb.imagePath
+                });
+              }
+            } catch (gateErr) {
+              console.error(`[GenerationQueue] Gate direct generation failed for beat ${mb.id}:`, gateErr);
+              VisualBeatRepository.update(mb.id, { generationStatus: 'FAILED' });
             }
           }
         }
@@ -498,7 +607,12 @@ export class GenerationQueue {
       this.activeProjectId = null;
       const currentProj = ProjectRepository.getById(projectId);
       if (currentProj && currentProj.status !== ProjectStatus.ERROR && !this.isCancelled) {
-        ProjectRepository.update(projectId, { status: ProjectStatus.READY });
+        const freshBeatsForThumb = VisualBeatRepository.listByProjectId(projectId);
+        const firstReadyThumb = freshBeatsForThumb.find((b) => isBeatImageValid(b));
+        ProjectRepository.update(projectId, {
+          status: ProjectStatus.READY,
+          ...(firstReadyThumb?.imagePath ? { thumbnailPath: firstReadyThumb.imagePath } : {})
+        });
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('generation:complete', { projectId, autoEditApplied: true });
         }

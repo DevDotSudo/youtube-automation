@@ -147,7 +147,7 @@ export const GenerationPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 select-none relative bg-[#0A0C0F]">
+    <div className="p-10 w-full flex flex-col gap-6 select-none relative bg-[#0A0C0F]">
       {/* Auto-Edit Finalizing Loading Overlay */}
       {isAutoEditing && (
         <div className="fixed inset-0 z-50 bg-[#0A0C0F]/95 backdrop-blur-md flex flex-col items-center justify-center gap-6 p-6 text-center animate-in fade-in duration-200">
@@ -363,22 +363,38 @@ export const GenerationPage: React.FC = () => {
           </div>
 
           {/* Beat Image Preview */}
-          <div className="w-full aspect-video bg-[#0C0E11] rounded-xl border border-white/[0.08] overflow-hidden relative shadow-lg flex items-center justify-center">
+          <div className={`${
+            currentProject?.aspectRatio === '9:16' || currentProject?.platform === 'FACEBOOK'
+              ? 'max-w-xs mx-auto aspect-[9/16]'
+              : 'w-full aspect-video'
+          } bg-[#0C0E11] rounded-xl border border-white/[0.08] overflow-hidden relative shadow-lg flex items-center justify-center`}>
             {activeBeat?.generationStatus === 'READY' && activeBeat?.imagePath ? (
-              <img
-                key={`beat-preview-${activeBeat.id}-${activeBeat.imagePath}`}
-                src={getMediaUrl(activeBeat.imagePath, true)}
-                alt="Active Beat Preview"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  setTimeout(() => {
-                    if (activeBeat?.imagePath) {
-                      target.src = getMediaUrl(activeBeat.imagePath, Date.now());
-                    }
-                  }, 500);
-                }}
-                className="w-full h-full object-cover animate-in fade-in duration-300"
-              />
+              activeBeat.imagePath.toLowerCase().match(/\.(mp4|webm|mov|mkv)$/) ? (
+                <video
+                  key={`beat-preview-vid-${activeBeat.id}-${activeBeat.imagePath}`}
+                  src={getMediaUrl(activeBeat.imagePath)}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover animate-in fade-in duration-300"
+                />
+              ) : (
+                <img
+                  key={`beat-preview-${activeBeat.id}-${activeBeat.imagePath}`}
+                  src={getMediaUrl(activeBeat.imagePath)}
+                  alt="Active Beat Preview"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    setTimeout(() => {
+                      if (activeBeat?.imagePath) {
+                        target.src = getMediaUrl(activeBeat.imagePath, Date.now());
+                      }
+                    }, 500);
+                  }}
+                  className="w-full h-full object-cover animate-in fade-in duration-300"
+                />
+              )
             ) : isGenerating ? (
               <div className="flex flex-col items-center justify-center gap-2.5 text-[#8781FF]">
                 <span className="material-symbols-outlined text-[36px] animate-spin text-[#C4C0FF]">progress_activity</span>

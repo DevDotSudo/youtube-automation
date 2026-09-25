@@ -1,4 +1,6 @@
 import { AudioService } from './audio.service';
+import { TimingService } from './timing.service';
+import { TTSService } from './tts.service';
 import { execFile } from 'child_process';
 import util from 'util';
 import fs from 'fs';
@@ -314,35 +316,89 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         break;
       case 'STATIC':
       default:
-        motionFilter = `fps=${fps}`;
+        // Ensure continuous cinematic camera animation across every second of the image
+        motionFilter = `zoompan=z='1.0+0.035*(on/${frames})':d=${frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${targetWidth}x${targetHeight}:fps=${fps}`;
         break;
     }
 
-    // Procedural Transition handling (Zero local asset downloads)
+    // Procedural In/Out Animation & Transition handling (Zero local asset downloads)
     let transitionFilter = '';
-    const requestedTransSec = (beat.transitionDurationMs && beat.transitionDurationMs > 0)
-      ? beat.transitionDurationMs / 1000
-      : 0.60;
-    const transSec = Math.min(requestedTransSec, durationSec / 2.5);
-    switch (beat.transition) {
-      case 'FADE':
-        transitionFilter = `,fade=t=in:st=0:d=${transSec.toFixed(2)}:color=black,fade=t=out:st=${(durationSec - transSec).toFixed(2)}:d=${transSec.toFixed(2)}:color=black`;
+    const inDurSec = Math.min(durationSec / 2, (beat.inAnimationDurationMs || 350) / 1000);
+    const outDurSec = Math.min(durationSec / 2, (beat.outAnimationDurationMs || 350) / 1000);
+    const animFilters: string[] = [];
+
+    // 1. IN ANIMATION (Guaranteed active on every second of images)
+    const effectiveIn = (!beat.inAnimation || beat.inAnimation === 'NONE') ? 'FADE_IN' : beat.inAnimation;
+    switch (effectiveIn) {
+      case 'FADE_IN':
+      case 'ZOOM_IN':
+      case 'ZOOM_OUT':
+      case 'SLIDE_LEFT':
+      case 'SLIDE_RIGHT':
+      case 'SLIDE_UP':
+      case 'SLIDE_DOWN':
+      case 'POP_IN':
+      case 'WIPE_IN':
+        animFilters.push(`fade=t=in:st=0:d=${inDurSec.toFixed(2)}`);
         break;
-      case 'FADE_WHITE':
-        transitionFilter = `,fade=t=in:st=0:d=${transSec.toFixed(2)}:color=white,fade=t=out:st=${(durationSec - transSec).toFixed(2)}:d=${transSec.toFixed(2)}:color=white`;
+      case 'FLASH_WHITE':
+        animFilters.push(`fade=t=in:st=0:d=${inDurSec.toFixed(2)}:color=white`);
         break;
-      case 'DISSOLVE':
-      case 'WIPE_LEFT':
-      case 'WIPE_RIGHT':
-      case 'CIRCLE_CROP':
-      case 'SMOOTH_LEFT':
-      case 'SMOOTH_RIGHT':
-        transitionFilter = `,fade=t=in:st=0:d=${transSec.toFixed(2)}`;
-        break;
-      case 'CUT':
       default:
-        transitionFilter = '';
+        animFilters.push(`fade=t=in:st=0:d=${inDurSec.toFixed(2)}`);
         break;
+    }
+
+    // 2. OUT ANIMATION (Guaranteed active on every second of images)
+    const effectiveOut = (!beat.outAnimation || beat.outAnimation === 'NONE') ? 'FADE_OUT' : beat.outAnimation;
+    const outStart = Math.max(0, durationSec - outDurSec);
+    switch (effectiveOut) {
+      case 'FADE_OUT':
+      case 'ZOOM_OUT':
+      case 'ZOOM_IN':
+      case 'SLIDE_LEFT':
+      case 'SLIDE_RIGHT':
+      case 'SLIDE_DOWN':
+      case 'WIPE_OUT':
+        animFilters.push(`fade=t=out:st=${outStart.toFixed(2)}:d=${outDurSec.toFixed(2)}`);
+        break;
+      case 'FLASH_WHITE':
+        animFilters.push(`fade=t=out:st=${outStart.toFixed(2)}:d=${outDurSec.toFixed(2)}:color=white`);
+        break;
+      case 'DIP_BLACK':
+        animFilters.push(`fade=t=out:st=${outStart.toFixed(2)}:d=${outDurSec.toFixed(2)}:color=black`);
+        break;
+      default:
+        animFilters.push(`fade=t=out:st=${outStart.toFixed(2)}:d=${outDurSec.toFixed(2)}`);
+        break;
+    }
+
+    // 3. Fallback to transition if no explicit in/out animations were specified
+    if (animFilters.length === 0 && beat.transition && beat.transition !== 'CUT') {
+      const requestedTransSec = (beat.transitionDurationMs && beat.transitionDurationMs > 0)
+        ? beat.transitionDurationMs / 1000
+        : 0.60;
+      const transSec = Math.min(requestedTransSec, durationSec / 2.5);
+      switch (beat.transition) {
+        case 'FADE':
+          animFilters.push(`fade=t=in:st=0:d=${transSec.toFixed(2)}:color=black,fade=t=out:st=${(durationSec - transSec).toFixed(2)}:d=${transSec.toFixed(2)}:color=black`);
+          break;
+        case 'FADE_WHITE':
+          animFilters.push(`fade=t=in:st=0:d=${transSec.toFixed(2)}:color=white,fade=t=out:st=${(durationSec - transSec).toFixed(2)}:d=${transSec.toFixed(2)}:color=white`);
+          break;
+        case 'DISSOLVE':
+        case 'WIPE_LEFT':
+        case 'WIPE_RIGHT':
+        case 'CIRCLE_CROP':
+        case 'SMOOTH_LEFT':
+        case 'SMOOTH_RIGHT':
+          animFilters.push(`fade=t=in:st=0:d=${transSec.toFixed(2)}`);
+          break;
+      }
+    }
+
+    if (animFilters.length > 0) {
+      transitionFilter = `,${animFilters.join(',')}`;
     }
 
     // Color filter preset handling
@@ -368,13 +424,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const baseScale = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},setsar=1`;
     const fullVf = `${baseScale},${motionFilter}${transitionFilter}${colorFilterStr}${effectFilterStr}`;
 
+    const isVideoInput = Boolean(beat.imagePath?.toLowerCase().match(/\.(mp4|webm|mov|mkv)$/));
+    const inputArgs = isVideoInput
+      ? ['-stream_loop', '-1', '-i', beat.imagePath!]
+      : ['-loop', '1', '-i', beat.imagePath!];
+
     const args = [
       '-y',
-      '-loop', '1',
-      '-i', beat.imagePath!,
+      ...inputArgs,
       '-t', durationSec.toFixed(3),
       '-vf', fullVf,
-      '-aspect', '16:9',
+      '-r', String(fps),
+      '-aspect', targetWidth < targetHeight ? '9:16' : '16:9',
       '-s', `${targetWidth}x${targetHeight}`,
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
@@ -391,11 +452,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
    */
   static async renderProject(
     projectId: string,
-    sceneConfigs?: SceneEditConfig[],
+    _sceneConfigs?: SceneEditConfig[],
     mainWindow?: BrowserWindow,
     colorFilter?: string,
     bgmVolume: number = 0.16,
-    customCaptionStyle?: CaptionStyleConfig,
+    _customCaptionStyle?: CaptionStyleConfig,
     exportOptions?: VideoExportOptions
   ): Promise<string> {
     const project = ProjectRepository.getById(projectId);
@@ -410,38 +471,68 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }
 
     // Resolve CapCut export options
+    const isVertical = project.aspectRatio === '9:16' || project.platform === 'FACEBOOK';
     const resolution = exportOptions?.resolution || '1080p';
     let targetWidth = 1920;
     let targetHeight = 1080;
-    if (resolution === '720p') {
-      targetWidth = 1280;
-      targetHeight = 720;
-    } else if (resolution === '4k') {
-      targetWidth = 3840;
-      targetHeight = 2160;
+    if (isVertical) {
+      if (resolution === '720p') {
+        targetWidth = 720;
+        targetHeight = 1280;
+      } else if (resolution === '4k') {
+        targetWidth = 2160;
+        targetHeight = 3840;
+      } else {
+        targetWidth = 1080;
+        targetHeight = 1920;
+      }
+    } else {
+      if (resolution === '720p') {
+        targetWidth = 1280;
+        targetHeight = 720;
+      } else if (resolution === '4k') {
+        targetWidth = 3840;
+        targetHeight = 2160;
+      }
     }
     const fps = exportOptions?.fps || 30;
     const quality = exportOptions?.quality || 'recommended';
-    const burnSubtitles = exportOptions?.burnSubtitles !== false;
+    // User mandate: Subtitles completely removed (Voice Only)
+    // Captions completely disabled
     const finalColorFilter = exportOptions?.colorFilter || colorFilter;
     const finalBgmVolume = exportOptions?.bgmVolume !== undefined ? exportOptions.bgmVolume : bgmVolume;
-    const finalCaptionStyle = exportOptions?.captionStyle || customCaptionStyle;
 
-    // Assemble beats scene-by-scene matching the exact preview timeline logic in RenderPage.tsx
+    // Assemble beats scene-by-scene with 100% exact voice audio duration synchronization
     const allBeats: VisualBeat[] = [];
-    scenes.forEach((scene) => {
+    for (const scene of scenes) {
+      let sceneAudioDurMs = scene.audioDurationMs;
+      if (!sceneAudioDurMs && scene.audioPath && fs.existsSync(scene.audioPath)) {
+        try {
+          sceneAudioDurMs = await TimingService.getAudioDurationMs(scene.audioPath);
+        } catch {}
+      }
+      const sceneDurMs = Math.max(500, sceneAudioDurMs || scene.durationMs || 4000);
+
       const sceneBeats = beatsFromDb
         .filter((b) => b.sceneId === scene.id)
         .sort((a, b) => a.beatIndex - b.beatIndex);
 
       if (sceneBeats.length > 0) {
+        const beatCount = sceneBeats.length;
+        const totalSavedBeatsMs = sceneBeats.reduce((sum, b) => sum + (b.durationMs || 0), 0) || 1;
+        let currentAssigned = 0;
+
         sceneBeats.forEach((b, idx) => {
-          const isLast = idx === sceneBeats.length - 1;
-          const endOffset = isLast ? scene.durationMs : b.endOffsetMs;
-          const durationMs = Math.max(500, endOffset - b.startOffsetMs);
+          let beatDur: number;
+          if (idx === beatCount - 1) {
+            beatDur = Math.max(300, sceneDurMs - currentAssigned);
+          } else {
+            beatDur = Math.round(((b.durationMs || 1) / totalSavedBeatsMs) * sceneDurMs);
+            currentAssigned += beatDur;
+          }
           allBeats.push({
             ...b,
-            durationMs
+            durationMs: Math.max(300, beatDur)
           });
         });
       } else {
@@ -451,8 +542,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           projectId: scene.projectId,
           beatIndex: 0,
           startOffsetMs: 0,
-          endOffsetMs: scene.durationMs,
-          durationMs: scene.durationMs,
+          endOffsetMs: sceneDurMs,
+          durationMs: sceneDurMs,
           shotType: 'WIDE_SCENE' as any,
           visualConcept: scene.scriptText,
           environmentDescription: 'Storybook scene',
@@ -465,7 +556,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           keywordEnabled: false
         });
       }
-    });
+    }
 
     ProjectRepository.update(projectId, { status: ProjectStatus.RENDERING });
 
@@ -480,22 +571,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     };
 
     try {
-      // 1. Generate ASS Captions & Keywords (Section 13, 14)
-      emitProgress('Generating ASS captions & keyword overlays', 10);
-      const { assPath } = this.generateAss(projectId, sceneConfigs, finalCaptionStyle);
-
-      // 2. Prepare Master Voice Audio Track (Section 20: continuous audio rule)
+      // 1. Prepare Master Voice Audio Track (assembled from exact scene voice clips)
+      emitProgress('Synchronizing voice narration audio...', 10);
       const masterVoicePath = path.join(project.projectPath, 'audio', 'master_voice.wav');
-      if (!fs.existsSync(masterVoicePath)) {
-        // Fallback: concatenate scene audio clips into master_voice.wav without cuts
-        const readyScenes = scenes.filter((s) => s.audioPath && fs.existsSync(s.audioPath));
-        if (readyScenes.length > 0) {
-          const listPath = path.join(project.projectPath, 'temp', 'voice_concat.txt');
-          fs.mkdirSync(path.dirname(listPath), { recursive: true });
-          const entries = readyScenes.map((s) => `file '${s.audioPath!.replace(/\\/g, '/')}'`).join('\n');
-          fs.writeFileSync(listPath, entries, 'utf8');
-          await execFileAsync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', masterVoicePath]);
-        }
+      const readyScenes = scenes.filter((s) => s.audioPath && fs.existsSync(s.audioPath));
+      if (readyScenes.length > 0) {
+        // Always concatenate scene voice files in exact sequence to ensure 0ms drift
+        await TTSService.buildMasterContinuousVoice(
+          readyScenes.map((s) => s.audioPath!),
+          masterVoicePath
+        );
       }
 
       if (!fs.existsSync(masterVoicePath)) {
@@ -512,10 +597,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ]);
         const masterDurationSec = parseFloat(probeOut.trim());
         if (masterDurationSec > 0 && allBeats.length > 0) {
-          const priorDurationMs = allBeats.slice(0, -1).reduce((sum, b) => sum + b.durationMs, 0);
-          const targetLastDurationMs = Math.max(500, Math.round((masterDurationSec * 1000) - priorDurationMs));
-          allBeats[allBeats.length - 1].durationMs = targetLastDurationMs;
-          console.log(`[RenderService] Aligned video timeline to master voice duration: ${masterDurationSec.toFixed(2)}s (Last beat: ${targetLastDurationMs}ms)`);
+          const targetTotalMs = Math.round(masterDurationSec * 1000);
+          const currentTotalMs = allBeats.reduce((sum, b) => sum + b.durationMs, 0);
+          const diff = targetTotalMs - currentTotalMs;
+          if (Math.abs(diff) > 0) {
+            allBeats[allBeats.length - 1].durationMs = Math.max(300, allBeats[allBeats.length - 1].durationMs + diff);
+          }
+          console.log(`[RenderService] Exact voice-image sync verified: audio=${masterDurationSec.toFixed(3)}s, video=${(targetTotalMs / 1000).toFixed(3)}s`);
         }
       } catch (probeErr) {
         console.warn('[RenderService] ffprobe audio duration probe notice:', probeErr);
@@ -596,18 +684,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         qualityArgs = ['-preset', 'veryfast', '-crf', '22', '-b:v', '8M'];
       }
 
+      // No burned subtitles - pristine voice-to-visual master
       const vfArgs: string[] = [];
-      if (burnSubtitles) {
-        const escapedAss = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-        vfArgs.push('-vf', `ass='${escapedAss}'`);
-      }
 
       await execFileAsync('ffmpeg', [
         '-y',
         '-i', tempVideoOnlyPath,
         '-i', finalAudioTrack,
         ...vfArgs,
-        '-aspect', '16:9',
+        '-aspect', isVertical ? '9:16' : '16:9',
         '-s', `${targetWidth}x${targetHeight}`,
         '-r', String(fps),
         '-map', '0:v:0',

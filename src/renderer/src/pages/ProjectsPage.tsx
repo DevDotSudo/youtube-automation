@@ -57,7 +57,7 @@ export const ProjectsPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full select-none">
+    <div className="p-10 flex flex-col gap-6 w-full select-none">
       {/* Sub-header & Action Bar */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-white/[0.06]">
         <div className="flex flex-col gap-1.5">
@@ -233,7 +233,7 @@ export const ProjectsPage: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredProjects.map((p) => {
             const isCompleted = p.status === ProjectStatus.COMPLETE;
             const isReview = p.status === ProjectStatus.REVIEW;
@@ -246,14 +246,26 @@ export const ProjectsPage: React.FC = () => {
                 {/* 16:9 Thumbnail Header */}
                 <div
                   onClick={() => navigate(`/project/${p.id}/render`)}
+                  onMouseEnter={(e) => { const v = e.currentTarget.querySelector('video'); if (v) v.play().catch(() => {}); }}
+                  onMouseLeave={(e) => { const v = e.currentTarget.querySelector('video'); if (v) { v.pause(); v.currentTime = 0; } }}
                   className="w-full aspect-video bg-[#0C0E11] relative flex items-center justify-center overflow-hidden cursor-pointer border-b border-white/[0.06]"
                 >
                   {p.thumbnailPath ? (
-                    <img
-                      src={getMediaUrl(p.thumbnailPath, true)}
-                      alt={p.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    p.thumbnailPath.toLowerCase().match(/\.(mp4|webm|mov|mkv)$/) ? (
+                      <video
+                        src={getMediaUrl(p.thumbnailPath)}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                      />
+                    ) : (
+                      <img
+                        src={getMediaUrl(p.thumbnailPath)}
+                        alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )
                   ) : (
                     <>
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0C0E11] via-transparent to-transparent opacity-80 z-10"></div>
@@ -265,6 +277,13 @@ export const ProjectsPage: React.FC = () => {
 
                   {/* Top Status Badge */}
                   <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold ${
+                      p.platform === 'FACEBOOK'
+                        ? 'bg-[#1877F2]/20 text-[#60A5FA] border-[#1877F2]/40'
+                        : 'bg-[#FF0000]/15 text-[#F87171] border-[#FF0000]/30'
+                    }`}>
+                      {p.platform === 'FACEBOOK' ? 'Facebook 9:16' : 'YouTube 16:9'}
+                    </span>
                     <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-semibold ${
                       isCompleted
                         ? 'bg-[#4EDEA3]/20 text-[#4EDEA3] border-[#4EDEA3]/40'

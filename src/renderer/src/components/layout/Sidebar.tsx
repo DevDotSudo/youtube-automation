@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useSystemStore } from '../../stores/system.store';
 
@@ -25,22 +25,22 @@ export const Sidebar: React.FC = () => {
   }, [status]);
 
   return (
-    <aside className="fixed left-0 top-9 bottom-0 w-60 bg-[#101216]/95 backdrop-blur-xl border-r border-white/[0.06] z-40 flex flex-col justify-between overflow-y-auto select-none">
-      <div className="p-3.5 flex flex-col gap-6">
+    <aside className="fixed left-0 top-9 bottom-0 w-72 bg-[#101216]/95 backdrop-blur-xl border-r border-white/[0.06] z-40 flex flex-col justify-between overflow-y-auto select-none">
+      <div className="p-4 flex flex-col gap-6">
         {/* Studio Branding */}
         <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#8781FF] to-[#4F44E2] flex items-center justify-center text-white shadow-md shadow-[#8781FF]/20 shrink-0">
-            <span className="material-symbols-outlined text-[20px]">auto_stories</span>
+            <span className="material-symbols-outlined text-[22px]">terminal</span>
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#F0F0F3] tracking-tight truncate font-display">GhibliForge</span>
+              <span className="text-sm font-bold text-[#F0F0F3] tracking-tight truncate font-display">Sudo Automation</span>
               <span className="text-[9px] font-mono font-bold text-[#8781FF] bg-[#00e5ff] animate-pulse/15 px-1 rounded uppercase">
                 v2.4
               </span>
             </div>
             <span className="text-[10px] font-mono text-[#918FA1] truncate">
-              Studio Anime Suite
+              Autonomous Video Suite
             </span>
           </div>
         </div>
@@ -57,22 +57,70 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) =>
                 `group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-xs ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#8781FF]/20 to-[#8781FF]/5 text-[#F0F0F3] font-semibold border border-[#8781FF]/30 shadow-sm shadow-[#8781FF]/10'
+                    ? 'bg-gradient-to-r from-[#FF4E4E]/20 to-[#FF4E4E]/5 text-[#F0F0F3] font-semibold border border-[#FF4E4E]/30 shadow-sm shadow-[#FF4E4E]/10'
                     : 'text-[#C7C4D8] hover:bg-white/[0.04] hover:text-[#F0F0F3]'
                 }`
               }
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[19px] text-[#8781FF] group-hover:scale-105 transition-transform">
-                  bolt
+                <span className="material-symbols-outlined text-[19px] text-[#FF4E4E] group-hover:scale-105 transition-transform">
+                  smart_display
                 </span>
                 <div className="flex flex-col">
-                  <span>Fast Studio</span>
-                  <span className="text-[10px] font-normal text-[#918FA1]">New story production</span>
+                  <span>YouTube Studio</span>
+                  <span className="text-[10px] font-normal text-[#918FA1]">16:9 Widescreen Story</span>
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-[#8781FF] bg-[#00e5ff] animate-pulse/10 px-1.5 py-0.5 rounded border border-[#8781FF]/20">
-                START
+              <span className="text-[10px] font-mono text-[#FF4E4E] bg-[#FF4E4E]/10 px-1.5 py-0.5 rounded border border-[#FF4E4E]/20 font-semibold">
+                16:9
+              </span>
+            </NavLink>
+
+            <NavLink
+              to="/facebook"
+              className={({ isActive }) =>
+                `group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-xs ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#1877F2]/20 to-[#1877F2]/5 text-[#F0F0F3] font-semibold border border-[#1877F2]/30 shadow-sm shadow-[#1877F2]/10'
+                    : 'text-[#C7C4D8] hover:bg-white/[0.04] hover:text-[#F0F0F3]'
+                }`
+              }
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[19px] text-[#1877F2] group-hover:scale-105 transition-transform">
+                  video_library
+                </span>
+                <div className="flex flex-col">
+                  <span>Facebook Studio</span>
+                  <span className="text-[10px] font-normal text-[#918FA1]">9:16 Video B-Roll Reels</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono text-[#1877F2] bg-[#1877F2]/10 px-1.5 py-0.5 rounded border border-[#1877F2]/20 font-semibold">
+                9:16
+              </span>
+            </NavLink>
+
+            <NavLink
+              to="/clips"
+              className={({ isActive }) =>
+                `group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-xs ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#00e5ff]/20 to-[#00e5ff]/5 text-[#F0F0F3] font-semibold border border-[#00e5ff]/30 shadow-sm shadow-[#00e5ff]/10'
+                    : 'text-[#C7C4D8] hover:bg-white/[0.04] hover:text-[#F0F0F3]'
+                }`
+              }
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[19px] text-[#00e5ff] group-hover:scale-105 transition-transform">
+                  video_search
+                </span>
+                <div className="flex flex-col">
+                  <span>Clips Finder</span>
+                  <span className="text-[10px] font-normal text-[#918FA1]">Free 4K/HD stock B-roll</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono text-[#00e5ff] bg-[#00e5ff]/10 px-1.5 py-0.5 rounded border border-[#00e5ff]/20 font-semibold">
+                4K FREE
               </span>
             </NavLink>
 
@@ -177,7 +225,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Bottom Telemetry & Storage HUD */}
-      <div className="p-3.5 border-t border-white/[0.06] flex flex-col gap-3 bg-[#0C0E11]/90">
+      <div className="p-4 border-t border-white/[0.06] flex flex-col gap-3 bg-[#0C0E11]/90">
         {/* Dynamic Storage Meter */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-[11px] font-mono">

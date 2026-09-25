@@ -31,7 +31,7 @@ export const CompletedPage: React.FC = () => {
 
   useEffect(() => {
     if (currentProject?.thumbnailPath) {
-      setThumbnailUrl(getMediaUrl(currentProject.thumbnailPath, true));
+      setThumbnailUrl(getMediaUrl(currentProject.thumbnailPath));
     }
   }, [currentProject]);
 
@@ -85,7 +85,7 @@ export const CompletedPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 flex flex-col gap-6 max-w-6xl mx-auto w-full select-none bg-[#0A0C0F]">
+    <div className="p-10 flex flex-col gap-6 w-full select-none bg-[#0A0C0F]">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-white/[0.06]">
         <div className="flex flex-col gap-1.5">

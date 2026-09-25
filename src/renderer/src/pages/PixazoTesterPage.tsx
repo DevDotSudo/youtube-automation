@@ -212,7 +212,7 @@ export const PixazoTesterPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full select-none">
+    <div className="p-10 flex flex-col gap-6 w-full select-none">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
         <div className="flex flex-col gap-1">
@@ -522,7 +522,7 @@ export const PixazoTesterPage: React.FC = () => {
                     >
                       <div className="w-full aspect-video bg-black/40 relative overflow-hidden">
                         <img
-                          src={getMediaUrl(img.imagePath, true)}
+                          src={getMediaUrl(img.imagePath)}
                           alt={img.prompt}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -618,7 +618,7 @@ export const PixazoTesterPage: React.FC = () => {
               <div className="flex-1 w-full aspect-video rounded-xl bg-[#0C0E11] border border-white/[0.04] overflow-hidden flex items-center justify-center relative">
                 {currentImage ? (
                   <img
-                    src={getMediaUrl(currentImage, true)}
+                    src={getMediaUrl(currentImage)}
                     alt="Current Render"
                     className="w-full h-full object-cover animate-in fade-in duration-300"
                   />
@@ -661,7 +661,7 @@ export const PixazoTesterPage: React.FC = () => {
               >
                 <div className="w-full aspect-video bg-black/40 overflow-hidden">
                   <img
-                    src={getMediaUrl(item.imagePath, true)}
+                    src={getMediaUrl(item.imagePath)}
                     alt={item.prompt}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />

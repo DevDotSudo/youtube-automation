@@ -5,7 +5,6 @@ import path, { join } from 'path';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { initDatabase } from './database/database';
 import { registerIpcHandlers } from './ipc';
-import { ServiceManager } from './services/service-manager';
 import { loadEnv, startEnvWatcher } from './env';
 
 // Register custom media protocol as privileged before app is ready
@@ -34,7 +33,7 @@ function createWindow(): BrowserWindow {
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
-    title: 'DocuForge - Automated Video Studio',
+    title: 'Sudo Automation - Video Production Studio',
     backgroundColor: '#0B0D10',
     autoHideMenuBar: true,
     webPreferences: {
@@ -64,7 +63,7 @@ function createWindow(): BrowserWindow {
   return mainWindow;
 }
 
-// Ensure only one instance of PsychoNiche Generator runs to prevent disk cache locks
+// Ensure only one instance of the application runs to prevent disk cache locks
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
@@ -133,7 +132,7 @@ app.whenReady().then(() => {
             'Content-Type': contentType,
             'Content-Length': buf.byteLength.toString(),
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-cache, no-store, must-revalidate'
+            'Cache-Control': 'public, max-age=86400'
           }
         });
       }
@@ -157,21 +156,12 @@ app.whenReady().then(() => {
   // Initialize SQLite database
   initDatabase();
 
-  // Initialize cloud voice engine & AI services
-  ServiceManager.startServices(app.getAppPath()).catch((err) => {
-    console.error('[Main] Error launching AI sidecar services:', err);
-  });
-
   const mainWindow = createWindow();
   registerIpcHandlers(mainWindow);
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
-
-app.on('before-quit', () => {
-  ServiceManager.stopServices();
 });
 
 app.on('window-all-closed', () => {
